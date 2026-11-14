@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ r.title }}</title><style>{{ css | safe }}</style></head>
+<body>
+{% from "_card.html" import card %}
+{% macro delta(cur, prev) -%}
+  {%- if cur is none or prev is none -%}<span class="d">–</span>
+  {%- else -%}{% set d = cur - prev %}<span class="d {{ 'up' if d > 0 else 'down' if d < 0 else '' }}">{{ d | signed }}{% if pct(cur, prev) %} ({{ pct(cur, prev) }}){% endif %}</span>
+  {%- endif -%}
+{%- endmacro %}
+{% set month = months[r.period.start.month - 1] %}
+
+<section class="page first">
+  <h1>{{ r.title }}</h1>
+  <p class="sub">Facebook and Instagram · {{ r.range_label }} · compared with the previous month ({{ r.prev.label() }}) · data fetched {{ r.generated | dmyhm }}</p>
+  {% if r.demo %}<p class="demo">TEST DATA: the numbers, texts and images are made up to show what the report looks like.</p>{% endif %}
+  <p class="lead">{{ r.lead() }}</p>
+
+  <table class="summary">
+    <thead><tr>
+      <th class="l">Campaign</th><th class="l"></th><th>Followers<br>{{ r.period.end | dm }}</th><th>Change<br>in month</th>
+      <th>Views</th><th>Posts</th><th>Likes<br>(reactions)</th><th>Comments</th><th>Shares</th><th>Interactions</th>
+    </tr></thead>
+    <tbody>
+    {% for c in r.campaigns %}
+      {% for pl in c.platforms() %}{% set m = c.metrics[pl] %}{% set pv = c.prev.get(pl) or {} %}
+      <tr class="{{ 'grp' if loop.first }}">
+        {% if loop.first %}<td class="l camp" rowspan="{{ c.platforms() | length }}">{{ c.campaign.name }}<small>{{ c.campaign.label or '' }}{% if c.campaign.status == 'ended' %}{{ ' · ' if c.campaign.label }}ended{% endif %}</small></td>{% endif %}
+        <td class="l pl">{{ 'FB' if pl == 'fb' else 'IG' }}</td>
+        {% if m is none %}
+        <td colspan="8" class="l" style="color:#4A4A46">{{ ('Instagram profile skipped' if c.campaign.ig_skip else 'Instagram profile not visible to the API') if pl == 'ig' else 'no page data' }}</td>
+        {% else %}
+        <td class="num">{{ m.followers | num }}</td>
+        <td class="num"><span class="{{ 'up' if (m.followers_change or 0) > 0 else 'down' if (m.followers_change or 0) < 0 else '' }}">{{ m.followers_change | signed }}</span>{% if c.suspicious_change.get(pl) %}<span class="flag">*</span>{% endif %}</td>
+        <td class="num">{{ m.views | num }}{{ delta(m.views, pv.get('views')) }}</td>
+        <td class="num">{{ m.posts | num }}{{ delta(m.posts, pv.get('posts')) }}</td>
+        <td class="num">{{ m.likes | num }}{{ delta(m.likes, pv.get('likes')) }}</td>
+        <td class="num">{{ m.comments | num }}{{ delta(m.comments, pv.get('comments')) }}</td>
+        <td class="num">{{ m.shares | num }}{{ delta(m.shares, pv.get('shares')) }}</td>
+        <td class="num">{{ m.interactions | num }}{{ delta(m.interactions, pv.get('interactions')) }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    {% for pl in ('fb', 'ig') %}{% set t = r.totals[pl] %}{% set tp = r.totals_prev[pl] %}
+      <tr class="total">
+        {% if loop.first %}<td class="l" rowspan="2">Total</td>{% endif %}
+        <td class="l pl">{{ 'FB' if pl == 'fb' else 'IG' }}</td>
+        <td class="num">{{ t.followers | num }}</td><td class="num">{{ t.followers_change | signed }}</td>
+        <td class="num">{{ t.views | num }}{{ delta(t.views, tp.views) }}</td><td class="num">{{ t.posts | num }}{{ delta(t.posts, tp.posts) }}</td>
+        <td class="num">{{ t.likes | num }}{{ delta(t.likes, tp.likes) }}</td><td class="num">{{ t.comments | num }}{{ delta(t.comments, tp.comments) }}</td>
+        <td class="num">{{ t.shares | num }}{{ delta(t.shares, tp.shares) }}</td><td class="num">{{ t.interactions | num }}{{ delta(t.interactions, tp.interactions) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="notes">
+    <p><b>Source:</b> Meta Graph API (Facebook Page Insights, Instagram Insights), the program's own records. <b>Period:</b> {{ r.period.label() }}. <b>Data fetched:</b> {{ r.generated | dmyhm }}.</p>
+    <p>Under each number: the change against {{ months[r.prev.start.month - 1] }} {{ r.prev.start.year }} (green up, red down, "–" no data).
+      <b>Followers</b>: the state on the last day of the month, change against the last day of the previous month.
+      <b>Views and interactions</b>: all profile activity in the month, paid and organic, including older content and ads.
+      <b>Posts, likes (reactions), comments, shares</b>: under posts published in the month, as of the last reading before the month ended. Profile and cover photo changes are not counted as posts.</p>
+    {% set flagged = r.campaigns | selectattr('flags') | list %}
+    {% if flagged %}<p><span class="flag">*</span> <b>To check:</b>
+      {% for c in flagged %}{{ c.campaign.name }}: {% for f in c.flags %}{{ f.date | dmy }} {{ f.detail }}{{ '; ' if not loop.last }}{% endfor %}{{ '. ' }}{% endfor %}
+      Values are never hidden or corrected.</p>{% endif %}
+  </div>
+</section>
+
+{% for c in r.campaigns %}
+<section class="page">
+  <h2>{{ c.campaign.name }}</h2>
+  <p class="sub">{{ month }} {{ r.period.start.year }}{% if c.campaign.label %} · {{ c.campaign.label }}{% endif %}{% if c.campaign.status == 'ended' %} · campaign ended{% endif %}</p>
+  {% set fb = c.metrics.get('fb') %}{% set ig = c.metrics.get('ig') %}
+  <dl class="tiles">
+    {% if 'fb' in c.metrics %}
+    <div><dt>FB · followers {{ r.period.end | dm }}</dt><dd>{{ fb.followers | num if fb else '–' }}<small>{{ (fb.followers_change | signed) if fb else '–' }} in month{% if c.suspicious_change.get('fb') %} *{% endif %}</small></dd></div>
+    <div><dt>FB · views</dt><dd>{{ fb.views | num if fb else '–' }}<small>{% if fb and fb.views and fb.views_paid is not none %}{{ (fb.views_paid * 100 / fb.views) | round | int }}% paid{% else %}&nbsp;{% endif %}</small></dd></div>
+    <div><dt>FB · likes / comments / shares</dt><dd>{{ fb.likes | num if fb else '–' }} / {{ fb.comments | num if fb else '–' }} / {{ fb.shares | num if fb else '–' }}<small>{{ fb.posts if fb else 0 }} posts in {{ month }}</small></dd></div>
+    <div><dt>FB · page interactions</dt><dd>{{ fb.interactions | num if fb else '–' }}<small>page reactions: {{ fb.page_reactions | num if fb else '–' }}</small></dd></div>
+    {% endif %}
+    {% if 'ig' in c.metrics %}
+    <div><dt>IG · followers {{ r.period.end | dm }}</dt><dd>{{ ig.followers | num if ig else '–' }}<small>{% if ig %}{{ ig.followers_change | signed }} in month{% else %}{{ c.profiles.ig }} not visible to the API{% endif %}</small></dd></div>
+    <div><dt>IG · account views</dt><dd>{{ ig.views | num if ig else '–' }}<small>{{ c.profiles.ig }}</small></dd></div>
+    <div><dt>IG · likes / comments / shares</dt><dd>{{ ig.likes | num if ig else '–' }} / {{ ig.comments | num if ig else '–' }} / {{ ig.shares | num if ig else '–' }}<small>{{ ig.posts if ig else 0 }} posts</small></dd></div>
+    <div><dt>IG · saves / interactions</dt><dd>{{ ig.saves | num if ig else '–' }} / {{ ig.interactions | num if ig else '–' }}<small>&nbsp;</small></dd></div>
+    {% endif %}
+  </dl>
+
+  {% if 'fb' in c.metrics %}
+  <h3>Facebook posts in {{ month }}</h3>
+  {% set ps = c.posts.get('fb', []) | sort(attribute='created_utc') %}
+  {% if ps %}
+  <table>
+    <thead><tr><th class="l">No.</th><th class="l">Date</th><th class="l">Post</th><th>Views</th><th>Paid</th><th>Likes<br>(reactions)</th><th>Comments</th><th>Shares</th></tr></thead>
+    <tbody>
+    {% for p in ps %}<tr class="{{ 'muted' if p.kind != 'post' }}">
+      <td class="l num">{{ loop.index }}</td><td class="l num">{{ p.created_local | dmyhm }}</td>
+      <td class="l"><div class="post-text">{{ p.type if p.kind != 'post' else (p.text or 'No caption') }}</div></td>
+      <td class="num">{{ p.views | num }}</td><td class="num">{{ p.paid | num }}</td><td class="num">{{ p.reactions | num }}</td>
+      <td class="num">{{ p.comments | num }}</td><td class="num">{{ p.shares | num }}</td>
+    </tr>{% endfor %}
+    {% set real = ps | selectattr('kind', 'equalto', 'post') | list %}
+    <tr class="total"><td class="l" colspan="3">Total (posts, without photo changes)</td>
+      <td class="num">{{ real | map(attribute='views') | select | sum | num }}</td><td class="num">{{ real | map(attribute='paid') | select | sum | num }}</td>
+      <td class="num">{{ real | map(attribute='reactions') | select | sum | num }}</td><td class="num">{{ real | map(attribute='comments') | select | sum | num }}</td>
+      <td class="num">{{ real | map(attribute='shares') | select | sum | num }}</td></tr>
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No posts in {{ month }}.</p>{% endif %}
+  {% endif %}
+
+  {% if 'ig' in c.metrics %}
+  <h3>Instagram posts in {{ month }}</h3>
+  {% set ps = c.posts.get('ig', []) | sort(attribute='created_utc') %}
+  {% if ig is none %}<p class="empty">The profile {{ c.profiles.ig }} is not visible to the API (it must be a business account linked to a Facebook page).</p>
+  {% elif ps %}
+  <table>
+    <thead><tr><th class="l">No.</th><th class="l">Date</th><th class="l">Post</th><th>Views</th><th>Reach</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Saves</th></tr></thead>
+    <tbody>
+    {% for p in ps %}<tr>
+      <td class="l num">{{ loop.index }}</td><td class="l num">{{ p.created_local | dmyhm }}</td>
+      <td class="l"><div class="post-text">{{ p.text or 'No caption' }}</div></td>
+      <td class="num">{{ p.views | num }}</td><td class="num">{{ p.reach | num }}</td><td class="num">{{ p.reactions | num }}</td>
+      <td class="num">{{ p.comments | num }}</td><td class="num">{{ p.shares | num }}</td><td class="num">{{ p.saves | num }}</td>
+    </tr>{% endfor %}
+    <tr class="total"><td class="l" colspan="3">Total</td>
+      <td class="num">{{ ps | map(attribute='views') | select | sum | num }}</td><td class="num">{{ ps | map(attribute='reach') | select | sum | num }}</td>
+      <td class="num">{{ ps | map(attribute='reactions') | select | sum | num }}</td><td class="num">{{ ps | map(attribute='comments') | select | sum | num }}</td>
+      <td class="num">{{ ps | map(attribute='shares') | select | sum | num }}</td><td class="num">{{ ps | map(attribute='saves') | select | sum | num }}</td></tr>
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No posts in {{ month }}.</p>{% endif %}
+  {% endif %}
+
+  <div class="notes">
+    <p>Post results: as of the last reading before the month ended, totals since publication. IG reach summed over posts is not unique reach.
+      Page interactions and reactions cover all activity in the month, including older posts and ads, so they differ from the sum under the month's posts.</p>
+    {% if c.flags %}<p><span class="flag">*</span> To check: {% for f in c.flags %}{{ f.date | dmy }} {{ f.detail }}{{ '; ' if not loop.last }}{% endfor %}.</p>{% endif %}
+  </div>
+</section>
+
+{% set all_posts = (c.posts.get('fb', []) + c.posts.get('ig', [])) | sort(attribute='created_utc') %}
+{% if all_posts %}
+<section class="page cards">
+  {% for pair in all_posts | batch(2) %}
+  <div class="cardrow">
+    <p class="sub" style="grid-column:1/-1;margin:0">{{ c.campaign.name }} · posts in {{ month }}</p>
+    {% for p in pair %}{{ card(p, c.profiles[p.platform], img(p)) }}{% endfor %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endfor %}
+</body>
+</html>

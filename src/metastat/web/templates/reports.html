@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="head"><h1>Monthly reports</h1>{% if active %}<span class="sub">{{ active.name }}</span>{% endif %}</div>
+
+<div class="grid2" style="margin-bottom:16px">
+  <section class="card">
+    <header><h2>New report</h2></header>
+    <p class="muted">One run creates three files: an XLSX workbook (summary and posts), an A4 PDF with post images, and a ZIP of post cards (campaign / platform / date).</p>
+    <form method="post" action="/reports" class="actions" style="align-items:flex-end;margin-top:12px">
+      <label class="f">Month
+        <select class="ctl" name="month">{% for key, label in months %}<option value="{{ key }}" {{ 'selected' if key == default_month }}>{{ label }}</option>{% endfor %}</select>
+      </label>
+      <label class="f">Campaign
+        <select class="ctl" name="campaign"><option value="">All campaigns</option>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+      </label>
+      <button class="btn primary" {% if running or not campaigns %}disabled{% endif %}>{{ 'Creating the report…' if running else 'Create report' }}</button>
+    </form>
+    {% if running or lines or error %}
+    <div class="logbox" id="reportlog" data-running="{{ '1' if running else '0' }}" style="height:150px" aria-live="polite">{{ lines | join('\n') }}</div>
+    {% endif %}
+    {% if error %}<div class="notice error" style="margin:12px 0 0"><svg class="icon"><use href="#i-alert"/></svg><span>The report failed: {{ error }}</span></div>{% endif %}
+    {% if result and not running %}<div class="notice ok" style="margin:12px 0 0;box-shadow:none;background:var(--ok-bg)"><svg class="icon"><use href="#i-check"/></svg><span>Done. The files are in the list below and in the reports folder.</span></div>{% endif %}
+  </section>
+  <section class="card">
+    <header><h2>How the numbers are counted</h2></header>
+    <p class="muted">Followers: the program's record from the last day of the month. Views and interactions: all profile activity in the month.
+      Reactions, comments, shares: under the month's posts, as of the last reading before the month ended.
+      Comparison: with the previous calendar month. Suspicious values are flagged, not hidden.</p>
+    <form method="post" action="/reports/folder" style="margin-top:12px"><button class="btn"><svg class="icon"><use href="#i-folder"/></svg>Open reports folder</button></form>
+  </section>
+</div>
+
+<section class="card flush">
+  <header><h2>Created files</h2></header>
+  {% if files %}
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Month</th><th class="l">File</th><th>Size</th><th class="l">Created</th></tr></thead>
+    <tbody>{% for f in files %}<tr>
+      <td class="l">{{ f.month }}</td>
+      <td class="l"><a href="/reports/file/{{ f.rel }}">{{ f.name }}</a></td>
+      <td>{{ (f.size / 1024) | round | int | num }} KB</td>
+      <td class="l">{{ f.mtime | dmyhm }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted" style="padding:0 16px 16px">No reports for this connection yet.</p>{% endif %}
+</section>
+{% endblock %}

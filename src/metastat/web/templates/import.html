@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Choose pages{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/settings">Settings</a><span>/</span><a href="/settings/connection/{{ x.id }}">{{ x.name }}</a><span>/</span><span>Pages</span></nav>
+<div class="head"><h1>Pages the token can access</h1></div>
+{% if error %}<div class="notice error" role="alert"><svg class="icon"><use href="#i-alert"/></svg><span>{{ error }}</span></div>{% endif %}
+
+{% if pages %}
+<form method="post" action="/settings/connection/{{ x.id }}/import">
+  <section class="card flush pages">
+    <header><h2>Tick the pages that should become campaigns</h2><span class="sub">you can change the name and label; the program finds the linked Instagram account itself</span></header>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l"><span class="sr">Select</span></th><th class="l">Campaign name</th><th class="l">Label</th><th class="l">FB page (ID)</th><th class="l">Instagram</th></tr></thead>
+      <tbody>{% for p in pages %}{% set done = p.id in have %}<tr>
+        <td class="l"><label class="check"><input type="checkbox" name="page" value="{{ p.id }}" {{ 'disabled checked' if done }} aria-label="Add {{ p.name }}"><span class="sr">{{ p.name }}</span></label></td>
+        <td class="l">{% if done %}{{ p.name }} <span class="badge ok">already added</span>{% else %}<input class="ctl" name="name_{{ p.id }}" value="{{ p.name }}" maxlength="120">{% endif %}</td>
+        <td class="l">{% if not done %}<input class="ctl" name="label_{{ p.id }}" maxlength="20" placeholder="e.g. DAIRY" style="min-width:110px;width:110px">{% endif %}</td>
+        <td class="l">{{ p.id }}</td>
+        <td class="l">{% if p.ig %}@{{ p.ig }}<input type="hidden" name="ig_{{ p.id }}" value="{{ p.ig }}">{% else %}<span class="muted">no linked account</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <div class="actions"><button class="btn primary">Add selected</button><a class="btn" href="/settings/connection/{{ x.id }}">Skip</a></div>
+</form>
+{% elif not error %}
+<section class="card empty"><h2>The token sees no pages</h2><p>Assign pages to the system user in Business Manager and generate the token again, or add a campaign by hand.</p>
+  <div class="actions"><a class="btn primary" href="/settings/connection/{{ x.id }}/campaign/new">Add a campaign by hand</a></div></section>
+{% else %}
+<div class="actions"><a class="btn" href="/settings/connection/{{ x.id }}">Back to the connection</a></div>
+{% endif %}
+{% endblock %}

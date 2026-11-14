@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ x.name }}{% endblock %}
+{% block content %}
+{% set test = x.kind == 'fake' %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/settings">Settings</a><span>/</span><span>{{ x.name }}</span></nav>
+<div class="head">
+  <h1>{{ x.name }}</h1>
+  <span class="badge {{ 'test' if test else 'blue' }}">{{ 'Test account' if test else 'Meta' }}</span>
+  {% if active and x.id == active.id %}<span class="badge ok">active</span>{% endif %}
+  <div class="sp actions">
+    {% if not (active and x.id == active.id) %}<form method="post" action="/settings/connection/{{ x.id }}/activate"><button class="btn primary">Make active</button></form>{% endif %}
+  </div>
+</div>
+{% if error %}<div class="notice error" role="alert"><svg class="icon"><use href="#i-alert"/></svg><span>{{ error }}</span></div>{% endif %}
+
+<div class="grid2" style="margin-bottom:16px">
+  <section class="card">
+    <header><h2>{{ 'Simulator' if test else 'Token' }}</h2></header>
+    {% if test %}
+    <p class="muted">Test account no. {{ x.account }}. Building a year of history fast-forwards the simulator clock and syncs week by week; the account's old database and images are deleted in the process.</p>
+    <div class="actions" style="margin-top:12px">
+      <form method="post" action="/settings/connection/{{ x.id }}/history" data-confirm="Build the history from scratch? The current database and images of this test account will be deleted."><button class="btn primary" {% if syncing %}disabled{% endif %}>Build a year of history</button></form>
+      <form method="post" action="/settings/connection/{{ x.id }}/check"><button class="btn" {% if syncing %}disabled{% endif %}>Check connection</button></form>
+    </div>
+    {% else %}
+    <dl class="kv">
+      <dt>Saved token</dt><dd>{% if x.token_bad %}<span class="err">cannot be read: it was saved on another computer or Windows account. Paste it again.</span>{% elif x.token %}<span class="code">{{ x.token_mask }}</span>{% else %}<span class="err">none</span>{% endif %}</dd>
+      {% if x.owner %}<dt>Owner</dt><dd>{{ x.owner }}</dd>{% endif %}
+      {% if x.missing %}<dt>Permissions</dt><dd class="err">missing: {{ x.missing | join(', ') }}</dd>{% endif %}
+    </dl>
+    <div class="actions" style="margin-top:12px">
+      <form method="post" action="/settings/connection/{{ x.id }}/check"><button class="btn" {% if syncing or not x.token or x.token_bad %}disabled{% endif %}>Check connection and metrics</button></form>
+    </div>
+    <form method="post" action="/settings/connection/{{ x.id }}/token" class="stack" style="gap:10px;margin-top:16px" autocomplete="off">
+      <label class="f">Change token
+        <textarea class="ctl" name="token" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" required placeholder="Paste the new EAA… token"></textarea>
+        <span class="hint">The new token is checked with Meta before it is saved; the old one stays if the new one fails.</span>
+      </label>
+      <div><button class="btn primary">Check and save token</button></div>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <header><h2>Name</h2></header>
+    <form method="post" action="/settings/connection/{{ x.id }}/name" class="actions" style="align-items:flex-end">
+      <label class="f" style="flex:1;min-width:200px">Connection name<input class="ctl" name="name" maxlength="80" value="{{ x.name }}" required></label>
+      <button class="btn">Rename</button>
+    </form>
+    <dl class="kv" style="margin-top:16px">
+      <dt>ID</dt><dd><span class="code">{{ x.id }}</span></dd>
+      <dt>Added</dt><dd>{{ x.created_utc | localtime }}</dd>
+    </dl>
+  </section>
+</div>
+
+<section class="card flush">
+  <header>
+    <h2>Campaigns</h2><span class="sub">{{ x.campaigns | length }}</span>
+    <div class="sp actions">
+      <a class="btn sm" href="/settings/connection/{{ x.id }}/import">Choose pages from the token</a>
+      <a class="btn sm primary" href="/settings/connection/{{ x.id }}/campaign/new"><svg class="icon"><use href="#i-plus"/></svg>Add campaign</a>
+    </div>
+  </header>
+  {% if x.campaigns %}
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Campaign</th><th class="l">Label</th><th class="l">Status</th><th class="l">FB page (ID)</th><th class="l">Instagram</th><th class="l"><span class="sr">Actions</span></th></tr></thead>
+    <tbody>{% for c in x.campaigns %}<tr>
+      <td class="l wrap"><b>{{ c.name }}</b></td>
+      <td class="l">{{ c.label or '–' }}</td>
+      <td class="l">{% if c.status == 'ended' %}<span class="badge end">ended</span>{% else %}<span class="badge ok">active</span>{% endif %}</td>
+      <td class="l">{{ c.fb_page_id or '–' }}</td>
+      <td class="l">{% if c.ig_username %}@{{ c.ig_username }}{% if c.ig_skip %} <span class="badge">skipped</span>{% endif %}{% else %}–{% endif %}</td>
+      <td class="l"><div class="actions">
+        <a class="btn sm" href="/settings/connection/{{ x.id }}/campaign/{{ c.id }}">Edit</a>
+        <form method="post" action="/settings/connection/{{ x.id }}/campaign/{{ c.id }}/remove" data-confirm="Remove the campaign &quot;{{ c.name }}&quot; from the list? The collected data stays in the database."><button class="btn sm danger" aria-label="Remove campaign {{ c.name }}">Remove</button></form>
+      </div></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <p class="muted" style="padding:0 16px 16px">No campaigns yet. Choose pages the token can access, or add a campaign by hand (name, page ID, IG account).</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <header><h2>Remove connection</h2></header>
+  <p class="muted">The connection disappears from the list and its saved token is deleted. The collected data, images and reports stay in the <span class="code">connections\{{ x.id }}</span> folder.</p>
+  <form method="post" action="/settings/connection/{{ x.id }}/remove" class="actions" style="margin-top:12px">
+    <label class="check"><input type="checkbox" name="confirm" value="1" required><span>I understand, remove "{{ x.name }}"</span></label>
+    <button class="btn danger">Remove connection</button>
+  </form>
+</section>
+{% endblock %}

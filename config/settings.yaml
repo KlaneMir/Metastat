@@ -1,0 +1,71 @@
+# Sync settings. Paths are relative to the project folder.
+
+# Graph API version. `metastat probe` shows which version your app uses by default;
+# bump the number here when Meta announces that this version is being retired.
+graph_api_version: v24.0
+
+timezone: Europe/Warsaw
+data_dir: data
+log_dir: logs
+
+# First run: from when to fetch the daily page history (FB gives about 2 years back).
+# Instagram gives only about 30 days anyway.
+backfill_since: "2026-09-01"
+
+# Post snapshots: daily for posts from the last N days,
+# and `sync --fresh` (hourly) for posts younger than fresh_hours.
+snapshot_window_days: 90
+fresh_hours: 168
+
+# Follower data flags (nothing is hidden, only marked).
+flags:
+  follower_jump_pct: 20        # day-to-day change larger than 20%
+  follower_collapse_from: 100  # a drop from at least 100 to a value below 10
+
+images:
+  report_width: 800
+  jpeg_quality: 85
+
+# Insights metrics. Meta renames them; a metric the API does not know is remembered
+# as unavailable (the metric_support table) and skipped. `metastat probe` checks them all.
+metrics:
+  fb_page_day:
+    - page_follows
+    - page_daily_follows_unique
+    - page_daily_unfollows_unique
+    - page_media_view
+    - page_total_media_view_unique
+    - page_post_engagements
+    - page_actions_post_reactions_total
+    - page_video_views
+  fb_post:
+    - post_media_view
+    - post_total_media_view_unique
+    - post_reactions_by_type_total
+    - post_clicks_by_type
+    - post_video_views
+  ig_account_day:          # metric_type=total_value, one day per request
+    - views
+    - reach
+    - accounts_engaged
+    - total_interactions
+    - likes
+    - comments
+    - shares
+    - saves
+    - follows_and_unfollows
+  ig_media:
+    - views
+    - reach
+    - saved
+    - shares
+    - total_interactions
+    - likes
+    - comments
+
+# Paid / organic split. Probe checks whether the API provides it and stores the raw response.
+breakdowns:
+  fb_page_day:
+    page_media_view: is_from_ads
+  fb_post:
+    post_media_view: is_from_ads

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · Metastat</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css?v={{ v }}">
+</head>
+<body>
+<main style="max-width:640px;margin:64px auto;padding:0 16px">
+  <section class="card empty">
+    <h2>{{ title }}</h2>
+    <p>{{ message }}</p>
+    <div class="actions"><a class="btn primary" href="/">Back to the dashboard</a><a class="btn" href="/settings">Settings</a></div>
+  </section>
+  {% if connections | length > 1 %}
+  <section class="card">
+    <header><h2>Switch connection</h2></header>
+    <div class="actions">
+      {% for c in connections if c.id != active_id %}
+      <form method="post" action="/connection"><input type="hidden" name="id" value="{{ c.id }}"><button class="btn">{{ c.name }}</button></form>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</main>
+<script src="/static/app.js?v={{ v }}"></script>
+</body>
+</html>

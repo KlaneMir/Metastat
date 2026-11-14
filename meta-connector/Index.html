@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base target="_blank">
+<title>Meta Connector</title>
+<style>
+:root{
+  --paper:#F4F4F2; --sheet:#FFFFFF; --ink:#141414; --ink-2:#4A4A46; --rule:#D6D6D0; --field:#BDBDB8;
+  --film:#141414; --film-2:#26261F; --film-ink:#EDEDE8; --film-ink-2:#A8A69E;
+  --amber:#E39B2D; --pencil:#D7372F; --error:#B8281F;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --mono:"Cascadia Mono","Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scrollbar-color:#9a9a94 transparent}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:var(--amber);color:var(--ink)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.film :focus-visible,.bar :focus-visible{outline-color:var(--amber)}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+button,input,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+/* header */
+.bar{height:52px;background:var(--film);color:var(--film-ink);display:flex;align-items:center;justify-content:space-between;padding:0 32px;gap:16px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-size:15px;letter-spacing:.02em}
+.brand span{color:var(--film-ink-2)}
+.tokenstate{display:flex;align-items:center;gap:14px;font-size:13px}
+.dot{width:8px;height:8px;background:var(--film-ink-2)}
+.tokenstate.ok .dot{background:var(--amber)}
+.tokenstate.bad .dot{background:var(--pencil)}
+.btn-film{height:30px;padding:0 12px;background:transparent;border:1px solid #55554f;color:var(--film-ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-film:hover{border-color:var(--film-ink-2)}
+
+/* token panel */
+.token{background:var(--sheet);border-bottom:1px solid var(--rule);padding:20px 32px;display:grid;grid-template-columns:minmax(280px,560px) auto;gap:8px 16px;align-items:end}
+.token p{grid-column:1/-1;margin:0;color:var(--ink-2);max-width:72ch}
+.token .msg{grid-column:1/-1}
+
+/* query */
+.query{background:var(--sheet);border-bottom:1px solid var(--rule);padding:16px 32px 14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 10px}
+.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-2)}
+.ctl{height:36px;border:1px solid var(--field);background:var(--sheet);padding:0 10px;border-radius:0;color:var(--ink)}
+.ctl:hover{border-color:var(--ink-2)}
+select.ctl{appearance:none;padding-right:30px;background:var(--sheet) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23141414' stroke-width='1.6'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 10px center}
+.ctl[type=date]{font-family:var(--mono);font-size:13px}
+#source{width:184px}#account{width:184px}#manualId{width:200px;font-family:var(--mono)}
+.metrics summary{min-width:118px!important}
+.presets{display:flex;height:36px}
+.presets button{border:1px solid var(--field);background:var(--sheet);padding:0 10px;cursor:pointer;margin-left:-1px;font-size:13px}
+.presets button:first-child{margin-left:0}
+.presets button:hover{border-color:var(--ink-2);position:relative}
+.presets button[aria-pressed=true]{background:var(--ink);color:var(--sheet);border-color:var(--ink);position:relative}
+.metrics{position:relative}
+.metrics summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-width:150px}
+.metrics summary::-webkit-details-marker{display:none}
+.menu{position:absolute;z-index:5;top:40px;left:0;background:var(--sheet);border:1px solid var(--ink);padding:8px 0;min-width:240px;box-shadow:0 8px 24px rgba(20,20,20,.14)}
+.menu label{display:flex;align-items:center;gap:10px;padding:6px 14px;color:var(--ink);font-size:13px;cursor:pointer}
+.menu label:hover{background:var(--paper)}
+.menu input{accent-color:var(--ink);width:15px;height:15px;margin:0}
+.btn{height:36px;padding:0 16px;border:1px solid var(--ink);background:var(--sheet);cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.btn.primary{background:var(--ink);color:var(--sheet)}
+.btn:hover{background:var(--paper)}.btn.primary:hover{background:#333}
+.btn:disabled{opacity:.4;cursor:default;background:var(--sheet)}.btn.primary:disabled{background:var(--ink)}
+.spacer{flex:1}
+
+/* status */
+.status{padding:12px 32px 0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink-2);min-height:32px}
+.status .err{color:var(--error);font-weight:600}
+.status .busy{display:inline-flex;align-items:center;gap:8px;color:var(--ink)}
+.busy i{width:10px;height:10px;background:var(--amber);animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+
+/* totals */
+.totals{display:flex;flex-wrap:wrap;gap:0;margin:14px 32px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--rule)}
+.totals div{padding:10px 28px 12px 0;margin-right:28px}
+.totals dt{font-size:12px;color:var(--ink-2)}
+.totals dd{margin:2px 0 0;font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+
+/* results toolbar */
+.tools{display:flex;align-items:center;gap:12px;padding:18px 32px 12px;flex-wrap:wrap}
+.tools h2{font-size:15px;margin:0 8px 0 0}
+.seg{display:flex}
+.seg button{height:32px;border:1px solid var(--field);background:var(--sheet);padding:0 12px;cursor:pointer;margin-left:-1px;font-size:13px}
+.seg button:first-child{margin-left:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--sheet);border-color:var(--ink);position:relative}
+.tools .ctl{height:32px}
+
+/* contact sheet */
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));column-gap:0;row-gap:18px;margin:0 32px 40px}
+.frame{background:var(--film);color:var(--film-ink);padding:9px 10px 12px;border-left:1px solid #2e2e29;display:flex;flex-direction:column;min-width:0}
+.edge{font:11px/1 var(--mono);color:var(--amber);letter-spacing:.06em;text-transform:uppercase;display:flex;gap:8px;white-space:nowrap;overflow:hidden;margin-bottom:8px}
+.edge b{font-weight:700}
+.pic{position:relative;display:block;aspect-ratio:4/5;background:var(--film-2)}
+.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic .gone{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:12px;color:var(--film-ink-2);font-size:12px}
+.pic:hover img{filter:brightness(1.08)}
+.circle{position:absolute;inset:-9px -7px;width:calc(100% + 14px);height:calc(100% + 18px);overflow:visible;pointer-events:none}
+.circle path{fill:none;stroke:var(--pencil);stroke-width:1.9;stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:0}
+.circle.draw path{animation:draw .9s cubic-bezier(.16,1,.3,1) both}
+@keyframes draw{from{stroke-dashoffset:1}}
+.cap{font-size:12px;color:var(--film-ink-2);margin:9px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
+.fm{display:grid;grid-template-columns:repeat(2,1fr);gap:5px 8px;font:12px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.fm span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.fm .icon{width:14px;height:14px;color:var(--film-ink-2)}
+.ramp{height:3px;background:var(--film-2);margin-top:10px}
+.ramp i{display:block;height:3px;background:var(--amber)}
+
+/* table */
+.tablewrap{margin:0 32px 40px;overflow:auto;border:1px solid var(--rule);background:var(--sheet);max-height:70vh}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;z-index:1;background:var(--film);color:var(--film-ink);text-align:right;font-weight:600;padding:0;white-space:nowrap}
+th button{all:unset;cursor:pointer;display:flex;justify-content:flex-end;align-items:center;gap:6px;width:100%;padding:9px 12px;box-sizing:border-box}
+th button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+th.l button,td.l{text-align:left;justify-content:flex-start}
+th .arrow{color:var(--amber);width:12px;height:12px}
+th .arrow.up{transform:rotate(180deg)}
+td{padding:8px 12px;border-bottom:1px solid #ECECE8;text-align:right;white-space:nowrap}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.txt{max-width:46ch;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover td{background:#FAFAF8}
+tfoot td{position:sticky;bottom:0;background:var(--paper);border-top:1px solid var(--ink);font-weight:600}
+.thumb{width:40px;height:50px;object-fit:cover;display:block;background:var(--paper)}
+td a{color:var(--ink);display:inline-flex}
+td a:hover{color:var(--error)}
+
+/* empty states */
+.empty{margin:28px 32px;padding:40px 32px;border:1px dashed var(--field);color:var(--ink-2);max-width:760px}
+.empty h2{color:var(--ink);font-size:16px;margin:0 0 6px}
+.empty p{margin:0;max-width:65ch}
+
+@media (prefers-reduced-motion:reduce){.circle.draw path{animation:none}.busy i{animation:none}}
+@media (max-width:720px){
+  .bar,.query,.token{padding-left:16px;padding-right:16px}
+  .status,.tools{padding-left:16px;padding-right:16px}
+  .totals,.sheet,.tablewrap,.empty{margin-left:16px;margin-right:16px}
+  .token{grid-template-columns:1fr}
+  .brand span{display:none}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-views" viewBox="0 0 16 16"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="i-reach" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13c.4-2.4 2.1-3.7 4.2-3.7s3.8 1.3 4.2 3.7"/><path d="M10.6 3.4a2.3 2.3 0 010 4.3M12 9.6c1.2.5 2 1.6 2.2 3.4"/></symbol>
+  <symbol id="i-likes" viewBox="0 0 16 16"><path d="M8 13.5S2 10 2 5.9A3 3 0 018 4.3a3 3 0 016 1.6C14 10 8 13.5 8 13.5z"/></symbol>
+  <symbol id="i-comments" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7L4 13.5V11H2.5z"/></symbol>
+  <symbol id="i-shares" viewBox="0 0 16 16"><path d="M9.5 2.5l4 4-4 4M13.5 6.5H8a5 5 0 00-5 5v1"/></symbol>
+  <symbol id="i-saves" viewBox="0 0 16 16"><path d="M4 2.5h8v11l-4-3-4 3z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v4h-9v-9h4"/></symbol>
+  <symbol id="i-key" viewBox="0 0 16 16"><circle cx="5" cy="11" r="2.5"/><path d="M6.8 9.2L13 3M10.5 5.5l2 2M12 4l1.5 1.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7M2.5 13.5h11"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+</svg>
+
+<header class="bar">
+  <div class="brand"><b>Meta Connector</b><span>data for Looker Studio and CSV</span></div>
+  <div class="tokenstate" id="tokenState">
+    <i class="dot"></i><span id="tokenText">Checking token…</span>
+    <button class="btn-film" id="tokenToggle" type="button"><svg class="icon"><use href="#i-key"/></svg>Token</button>
+  </div>
+</header>
+
+<section class="token" id="tokenPanel" hidden>
+  <label class="f">Meta token (system user)
+    <input class="ctl mono" id="tokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="EAAG…">
+  </label>
+  <div style="display:flex;gap:8px">
+    <button class="btn primary" id="tokenSave" type="button">Save and check</button>
+    <button class="btn" id="tokenClear" type="button">Remove token</button>
+  </div>
+  <div class="msg" id="tokenMsg"></div>
+  <p>The Looker Studio connector reads this same token. README, step 1, explains how to generate it and which permissions to grant.</p>
+</section>
+
+<form class="query" id="query" autocomplete="off">
+  <label class="f">Source<select class="ctl" id="source"></select></label>
+  <label class="f">Account<select class="ctl" id="account"></select></label>
+  <label class="f" id="manualWrap" hidden><span id="manualLabel">ID</span><input class="ctl" id="manualId" spellcheck="false"></label>
+  <label class="f">From<input class="ctl" id="from" type="date" required></label>
+  <label class="f">To<input class="ctl" id="to" type="date" required></label>
+  <div class="f">Quick pick
+    <div class="presets" id="presets">
+      <button type="button" data-p="7">7 days</button><button type="button" data-p="30">30 days</button><button type="button" data-p="month">This month</button><button type="button" data-p="prev">Last month</button>
+    </div>
+  </div>
+  <div class="f">Metrics
+    <details class="metrics" id="metrics">
+      <summary class="ctl"><span id="metricsLabel">—</span><svg class="icon" style="margin-left:auto"><use href="#i-chev"/></svg></summary>
+      <div class="menu" id="metricsMenu"></div>
+    </details>
+  </div>
+  <button class="btn primary" id="run" type="submit">Fetch</button>
+  <span class="spacer"></span>
+  <button class="btn" id="csv" type="button" disabled><svg class="icon"><use href="#i-down"/></svg>Export CSV</button>
+</form>
+
+<div class="status" id="status" aria-live="polite"></div>
+<main id="results"></main>
+
+<script>
+var $ = function (s) { return document.querySelector(s); };
+// Group digits in four-digit numbers too, so number columns line up.
+var NF = new Intl.NumberFormat('en-GB', { useGrouping: 'always' });
+var NF2 = new Intl.NumberFormat('en-GB', { useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+var DECIMAL = { spend: 1, purchase_value: 1 };
+var ICONS = { views: 'views', reach: 'reach', likes: 'likes', reactions: 'likes', comments: 'comments', shares: 'shares', saves: 'saves' };
+
+var S = {
+  status: null, assets: null, sourceId: 'igposts',
+  rows: null, query: null, meta: null, error: null, loading: false,
+  sort: { key: 'post_time', dir: -1 }, view: 'sheet', metricsOn: {}, lastDrawn: null
+};
+
+/* ---------- browser storage (convenience only, may be unavailable) ---------- */
+function load(k, d) { try { var v = localStorage.getItem('mc.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem('mc.' + k, JSON.stringify(v)); } catch (e) {} }
+
+/* ---------- server ---------- */
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    var r = google.script.run.withSuccessHandler(res).withFailureHandler(rej);
+    r[fn].apply(r, args);
+  });
+}
+
+/* ---------- helpers ---------- */
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dmy(ymd) { return ymd ? ymd.slice(6, 8) + '/' + ymd.slice(4, 6) + '/' + ymd.slice(0, 4) : ''; }
+function dmyhm(t) { return t ? dmy(t) + ' ' + t.slice(8, 10) + ':' + t.slice(10, 12) : ''; }
+function fmt(k, v) { if (v === null || v === undefined || v === '') return '–'; return DECIMAL[k] ? NF2.format(v) : NF.format(v); }
+function src() { return S.status.sources.filter(function (s) { return s.id === S.sourceId; })[0]; }
+function isPosts() { return S.sourceId === 'fbposts' || S.sourceId === 'igposts'; }
+function onMetrics() { var m = S.metricsOn[S.sourceId] || {}; return src().metrics.filter(function (x) { return m[x.id] !== false; }); }
+function icon(id) { return '<svg class="icon"><use href="#i-' + id + '"/></svg>'; }
+function plural(n, one, few, many) {
+  var a = n % 10, b = n % 100;
+  if (n === 1) return one;
+  return a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+}
+
+/* ---------- token ---------- */
+function renderToken() {
+  var st = S.status, el = $('#tokenState'), txt = $('#tokenText');
+  el.className = 'tokenstate ' + (!st ? '' : st.valid ? 'ok' : 'bad');
+  txt.textContent = !st ? 'Checking token…' : !st.hasToken ? 'No token' : st.valid ? 'Token valid' + (st.name ? ' · ' + st.name : '') : 'Token rejected by Meta';
+  if (st && (!st.hasToken || !st.valid)) $('#tokenPanel').hidden = false;
+  if (st && st.hasToken && !st.valid) $('#tokenMsg').innerHTML = '<span style="color:var(--error);font-weight:600">' + esc(st.error || 'The token does not work.') + '</span>';
+}
+
+$('#tokenToggle').onclick = function () { $('#tokenPanel').hidden = !$('#tokenPanel').hidden; if (!$('#tokenPanel').hidden) $('#tokenInput').focus(); };
+$('#tokenSave').onclick = function () {
+  var v = $('#tokenInput').value.trim();
+  if (!v) { $('#tokenMsg').innerHTML = '<span style="color:var(--error);font-weight:600">Paste a token.</span>'; return; }
+  $('#tokenMsg').textContent = 'Checking with Meta…';
+  call('panelSaveToken', v).then(function (st) {
+    S.status = st; $('#tokenInput').value = ''; $('#tokenMsg').textContent = 'Saved. The Looker Studio connector will use the same token.';
+    renderToken(); loadAssets();
+  }).catch(function (e) { $('#tokenMsg').innerHTML = '<span style="color:var(--error);font-weight:600">' + esc(e.message) + '</span>'; });
+};
+$('#tokenClear').onclick = function () {
+  call('panelClearToken').then(function (st) { S.status = st; S.assets = null; $('#tokenMsg').textContent = 'Token removed.'; renderToken(); renderAccounts(); });
+};
+
+/* ---------- query ---------- */
+function renderSources() {
+  $('#source').innerHTML = S.status.sources.map(function (s) { return '<option value="' + s.id + '">' + esc(s.label) + '</option>'; }).join('');
+  $('#source').value = S.sourceId;
+}
+
+function assetList() {
+  if (!S.assets) return [];
+  if (S.sourceId === 'ads') return S.assets.ads;
+  if (S.sourceId === 'page' || S.sourceId === 'fbposts') return S.assets.pages;
+  return S.assets.ig;
+}
+
+function renderAccounts() {
+  var list = assetList(), sel = $('#account'), remembered = load('acc.' + S.sourceId, null);
+  sel.innerHTML = list.map(function (a) { return '<option value="' + esc(a.id) + '">' + esc(a.name) + '</option>'; }).join('') +
+    '<option value="__manual">' + (list.length ? 'Other ID…' : 'Enter ID…') + '</option>';
+  if (remembered && list.some(function (a) { return a.id === remembered; })) sel.value = remembered;
+  else if (remembered) { sel.value = '__manual'; $('#manualId').value = remembered; }
+  else sel.value = list.length ? list[0].id : '__manual';
+  $('#manualLabel').textContent = src().idHint;
+  $('#manualWrap').hidden = sel.value !== '__manual';
+}
+
+function renderMetrics() {
+  var on = S.metricsOn[S.sourceId] || {};
+  $('#metricsMenu').innerHTML = src().metrics.map(function (m) {
+    return '<label><input type="checkbox" value="' + m.id + '"' + (on[m.id] === false ? '' : ' checked') + '>' + esc(m.label) + '</label>';
+  }).join('');
+  $('#metricsLabel').textContent = onMetrics().length + ' of ' + src().metrics.length;
+}
+
+function objectId() { return $('#account').value === '__manual' ? $('#manualId').value.trim() : $('#account').value; }
+function assetName() {
+  if ($('#account').value === '__manual') return $('#manualId').value.trim();
+  var o = $('#account').selectedOptions[0]; return o ? o.textContent : '';
+}
+
+$('#source').onchange = function () {
+  S.sourceId = this.value; save('source', S.sourceId);
+  S.rows = null; S.error = null; S.meta = null;
+  S.sort = isPosts() ? { key: 'post_time', dir: -1 } : { key: 'date', dir: 1 };
+  renderAccounts(); renderMetrics(); renderAll();
+};
+$('#account').onchange = function () {
+  $('#manualWrap').hidden = this.value !== '__manual';
+  if (this.value === '__manual') $('#manualId').focus(); else save('acc.' + S.sourceId, this.value);
+};
+$('#manualId').onchange = function () { save('acc.' + S.sourceId, this.value.trim()); };
+$('#metricsMenu').onchange = function (e) {
+  var on = S.metricsOn[S.sourceId] = S.metricsOn[S.sourceId] || {};
+  on[e.target.value] = e.target.checked; save('metrics', S.metricsOn);
+  $('#metricsLabel').textContent = onMetrics().length + ' of ' + src().metrics.length;
+  renderAll(); // no refetch needed
+};
+document.addEventListener('click', function (e) { if (!$('#metrics').contains(e.target)) $('#metrics').open = false; });
+$('#metrics').addEventListener('toggle', function () {
+  var m = $('#metricsMenu'); m.style.left = '0'; m.style.right = 'auto';
+  if (this.open && m.getBoundingClientRect().right > window.innerWidth - 8) { m.style.left = 'auto'; m.style.right = '0'; }
+});
+
+function setPreset(p) {
+  var t = new Date(), y = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1), f;
+  if (p === '7' || p === '30') { f = new Date(y); f.setDate(y.getDate() - Number(p) + 1); }
+  if (p === 'month') { f = new Date(t.getFullYear(), t.getMonth(), 1); y = t; }
+  if (p === 'prev') { f = new Date(t.getFullYear(), t.getMonth() - 1, 1); y = new Date(t.getFullYear(), t.getMonth(), 0); }
+  $('#from').value = iso(f); $('#to').value = iso(y);
+  markPreset(p); save('preset', p);
+}
+function markPreset(p) { Array.prototype.forEach.call($('#presets').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === p)); }); }
+$('#presets').onclick = function (e) { if (e.target.dataset.p) setPreset(e.target.dataset.p); };
+$('#from').oninput = $('#to').oninput = function () { markPreset(null); save('preset', null); save('dates', [$('#from').value, $('#to').value]); };
+
+$('#query').onsubmit = function (e) {
+  e.preventDefault();
+  var q = { source: S.sourceId, objectId: objectId(), from: $('#from').value, to: $('#to').value };
+  if (!S.status || !S.status.valid) { S.error = 'Save a working token first.'; return renderAll(); }
+  if (!q.objectId) { S.error = 'Choose an account or enter the ID (' + src().idHint + ').'; return renderAll(); }
+  if (!q.from || !q.to || q.from > q.to) { S.error = '“From” must be on or before “To”.'; return renderAll(); }
+  S.loading = true; S.error = null; S.query = { q: q, label: src().label, asset: assetName() };
+  renderAll();
+  call('panelQuery', q).then(function (res) {
+    S.loading = false; S.rows = res.rows; S.meta = res; S.lastDrawn = null; renderAll();
+  }).catch(function (err) {
+    var msg = String(err.message || err).trim();
+    S.loading = false; S.rows = null; S.error = 'Meta: ' + msg + (/[.!?]$/.test(msg) ? '' : '.') +
+      (/permission|uprawnie|\(#10\)|\(#200\)|\(#100\)/i.test(msg) ? ' Check the token permissions and asset assignment (README, step 1).' : '');
+    renderAll();
+  });
+};
+
+/* ---------- results ---------- */
+function sorted() {
+  var k = S.sort.key, d = S.sort.dir;
+  return S.rows.slice().sort(function (a, b) {
+    var x = a[k], y = b[k];
+    if (x === y) return 0; if (x === null || x === undefined) return 1; if (y === null || y === undefined) return -1;
+    return (x > y ? 1 : -1) * d;
+  });
+}
+
+function renderStatus() {
+  var el = $('#status'), q = S.query, parts = [];
+  if (q) parts.push('<span>' + esc(q.label) + ' · ' + esc(q.asset) + ' · <span class="num">' + dmy(q.q.from.replace(/-/g, '')) + '–' + dmy(q.q.to.replace(/-/g, '')) + '</span></span>');
+  if (S.loading) parts.push('<span class="busy"><i></i>Fetching from Meta. Long ranges with many posts can take up to a minute.</span>');
+  else if (S.error) parts.push('<span class="err">' + esc(S.error) + '</span>');
+  else if (S.rows) {
+    var n = S.rows.length, t = new Date(S.meta.fetchedAt);
+    parts.push('<span>Fetched <b class="num">' + NF.format(n) + '</b> ' + (isPosts() ? plural(n, 'post', 'posts', 'posts') : plural(n, 'row', 'rows', 'rows')) +
+      ' in <span class="num">' + NF2.format(S.meta.ms / 1000) + ' s</span> at <span class="num">' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + '</span></span>');
+  }
+  el.innerHTML = parts.join('');
+  $('#run').disabled = S.loading;
+  $('#csv').disabled = !S.rows || !S.rows.length || S.loading;
+}
+
+function totals(ms) {
+  return '<dl class="totals">' + (isPosts() ? '<div><dt>Posts</dt><dd>' + NF.format(S.rows.length) + '</dd></div>' : '') +
+    ms.map(function (m) {
+      var vals = S.rows.map(function (r) { return r[m.id]; }).filter(function (v) { return v !== null && v !== undefined; });
+      var v = !vals.length ? null : m.max ? Math.max.apply(null, vals) : vals.reduce(function (a, b) { return a + b; }, 0);
+      return '<div><dt>' + esc(m.label) + '</dt><dd>' + fmt(m.id, v) + '</dd></div>';
+    }).join('') + '</dl>';
+}
+
+function highlightKey(ms) {
+  var ids = ms.map(function (m) { return m.id; });
+  if (ids.indexOf(S.sort.key) >= 0) return S.sort.key;
+  return ids.indexOf('views') >= 0 ? 'views' : ids[0];
+}
+
+function renderSheet(rows, ms) {
+  var chrono = S.rows.slice().sort(function (a, b) { return a.post_time > b.post_time ? 1 : -1; });
+  var frameNo = {}; chrono.forEach(function (r, i) { frameNo[r.post_id] = i + 1; });
+  var hk = highlightKey(ms), maxViews = 0, top = null;
+  S.rows.forEach(function (r) {
+    if ((r.views || 0) > maxViews) maxViews = r.views;
+    if (hk && r[hk] > 0 && (!top || r[hk] > top[hk])) top = r;
+  });
+  var frameMetrics = ms.filter(function (m) { return ICONS[m.id]; });
+  var html = '<div class="sheet film">' + rows.map(function (r) {
+    var isTop = top && r.post_id === top.post_id;
+    return '<article class="frame" aria-label="Frame ' + frameNo[r.post_id] + '">' +
+      '<div class="edge"><b>' + frameNo[r.post_id] + '</b><span>' + dmyhm(r.post_time) + '</span><span>' + esc(r.post_type) + '</span></div>' +
+      '<a class="pic" href="' + esc(r.permalink || '#') + '" title="Open post">' +
+        (r.image ? '<img loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(r.image) + '">' : '<span class="gone">No preview</span>') +
+        (isTop ? '<svg class="circle" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M55 5C83 3 98 31 97 63c-1 34-20 58-48 57C20 119 3 94 4 61 5 29 25 7 59 9"/></svg>' : '') +
+      '</a>' +
+      '<p class="cap">' + esc(r.message || 'No caption') + '</p>' +
+      '<div class="fm">' + frameMetrics.map(function (m) {
+        return '<span title="' + esc(m.label) + '">' + icon(ICONS[m.id]) + fmt(m.id, r[m.id]) + '</span>';
+      }).join('') + '</div>' +
+      (maxViews && onMetrics().some(function (m) { return m.id === 'views'; }) ? '<div class="ramp" title="Views on a shared scale"><i style="width:' + Math.round(100 * (r.views || 0) / maxViews) + '%"></i></div>' : '') +
+    '</article>';
+  }).join('') + '</div>';
+  return { html: html, top: top ? top.post_id + ':' + hk : null };
+}
+
+function columns(ms) {
+  var byId = {}; src().dims.forEach(function (d) { byId[d.id] = d; });
+  var order = isPosts() ? ['image', 'post_time', 'post_type', 'message'] : src().dims.map(function (d) { return d.id; }).filter(function (id) { return id !== 'campaign_id'; });
+  return order.map(function (id) { return { id: id, label: id === 'image' ? '' : byId[id].label, dim: true }; })
+    .concat(ms.map(function (m) { return { id: m.id, label: m.label, metric: true, max: m.max }; }))
+    .concat(isPosts() ? [{ id: 'permalink', label: '', link: true }] : []);
+}
+
+function cell(c, r) {
+  var v = r[c.id];
+  if (c.id === 'image') return '<td class="l">' + (v ? '<img class="thumb" loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(v) + '" onerror="this.style.visibility=\'hidden\'">' : '') + '</td>';
+  if (c.link) return '<td>' + (v ? '<a href="' + esc(v) + '" title="Open post" aria-label="Open post">' + icon('link') + '</a>' : '') + '</td>';
+  if (c.id === 'date') return '<td class="l num">' + dmy(v) + '</td>';
+  if (c.id === 'post_time') return '<td class="l num">' + dmyhm(v) + '</td>';
+  if (c.metric) return '<td class="num">' + fmt(c.id, v) + '</td>';
+  return '<td class="l txt" title="' + esc(v) + '">' + esc(v) + '</td>';
+}
+
+function renderTable(rows, ms) {
+  var cols = columns(ms);
+  var head = cols.map(function (c) {
+    if (!c.label) return '<th class="l"></th>';
+    var on = S.sort.key === c.id;
+    return '<th class="' + (c.dim ? 'l' : '') + '" aria-sort="' + (on ? (S.sort.dir > 0 ? 'ascending' : 'descending') : 'none') + '">' +
+      '<button type="button" data-sort="' + c.id + '">' + esc(c.label) + (on ? '<svg class="icon arrow' + (S.sort.dir > 0 ? ' up' : '') + '"><use href="#i-chev"/></svg>' : '') + '</button></th>';
+  }).join('');
+  var body = rows.map(function (r) { return '<tr>' + cols.map(function (c) { return cell(c, r); }).join('') + '</tr>'; }).join('');
+  var foot = cols.map(function (c, i) {
+    if (i === 0) return '<td class="l">Total</td>';
+    if (!c.metric) return '<td></td>';
+    var vals = S.rows.map(function (r) { return r[c.id]; }).filter(function (v) { return v !== null && v !== undefined; });
+    var v = !vals.length ? null : c.max ? Math.max.apply(null, vals) : vals.reduce(function (a, b) { return a + b; }, 0);
+    return '<td class="num">' + fmt(c.id, v) + '</td>';
+  }).join('');
+  return '<div class="tablewrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody><tfoot><tr>' + foot + '</tr></tfoot></table></div>';
+}
+
+function renderAll() {
+  renderStatus();
+  var out = $('#results');
+  if (!S.status) { out.innerHTML = ''; return; }
+  if (!S.rows) {
+    out.innerHTML = S.loading || S.error ? '' : '<section class="empty"><h2>' + (S.status.valid ? 'Choose a source, account and period, then “Fetch”.' : 'Start with a Meta token.') + '</h2>' +
+      '<p>' + (S.status.valid ? 'Posts appear as frames on a contact sheet, with date, image and figures. Daily data appears in a table. Everything can be exported to CSV.' : 'Paste a token in the panel above. Without it, neither the panel nor the Looker Studio connector can fetch anything.') + '</p></section>';
+    return;
+  }
+  var ms = onMetrics();
+  if (!S.rows.length) {
+    out.innerHTML = '<section class="empty"><h2>' + (isPosts() ? 'No posts in this period.' : 'Meta returned no data for this period.') + '</h2><p>Check the date range and that the right account is selected.</p></section>';
+    return;
+  }
+  var rows = sorted(), html = totals(ms);
+  if (isPosts()) {
+    var sortOpts = [{ id: 'post_time', label: 'Publish date' }].concat(ms.filter(function (m) { return ICONS[m.id]; }));
+    html += '<div class="tools"><h2>Posts</h2>' +
+      '<div class="seg" role="group" aria-label="View"><button type="button" data-view="sheet" aria-pressed="' + (S.view === 'sheet') + '">Contact sheet</button><button type="button" data-view="table" aria-pressed="' + (S.view === 'table') + '">Table</button></div>' +
+      '<label class="f" style="flex-direction:row;align-items:center;gap:8px">Sort<select class="ctl" id="sortKey">' +
+      sortOpts.map(function (o) { return '<option value="' + o.id + '"' + (S.sort.key === o.id ? ' selected' : '') + '>' + esc(o.label) + '</option>'; }).join('') + '</select></label></div>';
+    if (S.view === 'sheet') {
+      var sheet = renderSheet(rows, ms);
+      out.innerHTML = html + sheet.html;
+      var c = out.querySelector('.circle');
+      if (c && sheet.top !== S.lastDrawn) { c.classList.add('draw'); S.lastDrawn = sheet.top; }
+      return;
+    }
+  }
+  out.innerHTML = html + (isPosts() ? '' : '<div class="tools"><h2>Daily data</h2></div>') + renderTable(rows, ms);
+}
+
+$('#results').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.view) { S.view = b.dataset.view; save('view', S.view); renderAll(); }
+  if (b.dataset.sort) {
+    var k = b.dataset.sort;
+    S.sort = S.sort.key === k ? { key: k, dir: -S.sort.dir } : { key: k, dir: (k === 'date' || k === 'post_time' || k === 'campaign_name' || k === 'message') ? 1 : -1 };
+    renderAll();
+  }
+});
+$('#results').addEventListener('change', function (e) {
+  if (e.target.id === 'sortKey') { S.sort = { key: e.target.value, dir: -1 }; renderAll(); }
+});
+$('#results').addEventListener('error', function (e) {
+  if (e.target.tagName === 'IMG' && e.target.parentNode.classList.contains('pic')) {
+    e.target.outerHTML = '<span class="gone">Preview expired. Meta image links are valid only for a while. Fetch the data again.</span>';
+  }
+}, true);
+
+/* ---------- CSV (semicolon separator and decimal comma, for Excel with Polish settings) ---------- */
+$('#csv').onclick = function () {
+  var ms = onMetrics(), dims = src().dims;
+  var cols = (isPosts() ? [] : [{ id: 'date', label: 'Date' }]).concat(dims).concat(ms);
+  var q = function (s) { s = String(s); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  var lines = [cols.map(function (c) { return q(c.label); }).join(';')];
+  sorted().forEach(function (r) {
+    lines.push(cols.map(function (c) {
+      var v = r[c.id];
+      if (v === null || v === undefined) return '';
+      if (c.id === 'date') return v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6, 8);
+      if (c.id === 'post_time') return v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6, 8) + ' ' + v.slice(8, 10) + ':' + v.slice(10, 12) + ':' + v.slice(12, 14);
+      if (typeof v === 'number') return String(v).replace('.', ',');
+      return q(v);
+    }).join(';'));
+  });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'meta_' + S.query.q.source + '_' + S.query.q.from + '_' + S.query.q.to + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+};
+
+/* ---------- start ---------- */
+function loadAssets() {
+  if (!S.status || !S.status.valid) return renderAccounts();
+  call('panelAssets').then(function (a) { S.assets = a; renderAccounts(); }).catch(function () { S.assets = null; renderAccounts(); });
+}
+
+(function init() {
+  S.sourceId = load('source', 'igposts');
+  S.metricsOn = load('metrics', {});
+  S.view = load('view', 'sheet');
+  var preset = load('preset', '30'), dates = load('dates', null);
+  if (preset) setPreset(preset); else if (dates) { $('#from').value = dates[0]; $('#to').value = dates[1]; }
+  renderToken();
+  call('panelStatus').then(function (st) {
+    S.status = st;
+    if (!st.sources.some(function (s) { return s.id === S.sourceId; })) S.sourceId = 'igposts';
+    S.sort = isPosts() ? { key: 'post_time', dir: -1 } : { key: 'date', dir: 1 };
+    renderToken(); renderSources(); renderAccounts(); renderMetrics(); renderAll(); loadAssets();
+  }).catch(function (e) { S.error = 'Could not connect to Apps Script: ' + e.message; renderStatus(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="head"><h1>Settings</h1></div>
+{% if error %}<div class="notice error" role="alert"><svg class="icon"><use href="#i-alert"/></svg><span>{{ error }}</span></div>{% endif %}
+
+{% if not store_mode %}
+<section class="card"><p class="muted">This folder uses the old file layout with <span class="code">config\settings.yaml</span> and <span class="code">config\campaigns.yaml</span>. You change the settings in those files; connections and tokens in the program work when Metastat is started from its main folder.</p></section>
+{% else %}
+{% if legacy_env %}<div class="notice error" role="alert"><svg class="icon"><use href="#i-alert"/></svg><span>There is an old <span class="code">.env</span> file in the program folder. Its token is already encrypted in the program, so delete the file: it keeps the token in plain text.</span></div>{% endif %}
+
+<section class="card" id="connections">
+  <header><h2>Connections</h2><span class="sub">each has its own campaigns, database, images and reports; switch the active one at the top</span></header>
+  {% if conns %}
+  <div class="conns">
+    {% for x in conns %}
+    <div class="conn">
+      <span class="av {{ 'test' if x.kind == 'fake' }}" aria-hidden="true">{{ x.name[:1] | upper }}</span>
+      <div>
+        <b>{{ x.name }}</b>
+        {% if active and x.id == active.id %}<span class="badge blue">active</span>{% endif %}
+        <span class="badge {{ 'test' if x.kind == 'fake' }}">{{ 'Test account' if x.kind == 'fake' else 'Meta' }}</span>
+        <div class="line2">
+          <span>{{ x.campaigns | length }} {{ 'campaign' if x.campaigns | length == 1 else 'campaigns' }}</span>
+          {% if x.token_bad %}<span class="err">token: cannot be read (saved on another computer or Windows account)</span>
+          {% elif x.kind == 'meta' %}<span>token {% if x.token %}{{ x.token_mask }}{% else %}<span class="err">none</span>{% endif %}</span>{% endif %}
+          {% if x.owner %}<span>token owner: {{ x.owner }}</span>{% endif %}
+          {% if x.missing %}<span class="err">missing permissions: {{ x.missing | join(', ') }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="actions">
+        {% if not (active and x.id == active.id) %}<form method="post" action="/settings/connection/{{ x.id }}/activate"><button class="btn sm blue-soft">Make active</button></form>{% endif %}
+        <a class="btn sm" href="/settings/connection/{{ x.id }}">Manage</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">There are no connections yet. Add a Meta token below, or a test account to try the program on made-up data.</p>
+  {% endif %}
+</section>
+
+<div class="grid2" style="margin-bottom:16px">
+  <section class="card" id="meta">
+    <header><h2>Add Meta connection</h2></header>
+    <ol class="steps">
+      <li>Business Manager → Business settings → Users → <b>System users</b>.</li>
+      <li>Assign the campaigns' pages and Instagram accounts to the user.</li>
+      <li><b>Generate token</b>: expiry "Never", permissions {{ 'pages_show_list, pages_read_engagement, read_insights, instagram_basic, instagram_manage_insights, business_management' }}.</li>
+    </ol>
+    {% if demo %}
+    <p class="muted"><b>Meta tokens cannot be added in demo mode:</b> the program runs on made-up data and does not connect to Meta. Start the program without <span class="code">DEMO=true</span> to connect a real account.</p>
+    {% else %}
+    <form method="post" action="/settings/meta" class="stack" style="gap:12px" autocomplete="off">
+      <label class="f">Connection name<input class="ctl" name="name" maxlength="80" value="{{ form_name }}" placeholder="e.g. Campaigns 2026"></label>
+      <label class="f">System user token
+        <textarea class="ctl" name="token" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" required placeholder="EAA…"></textarea>
+        <span class="hint">The program checks the token with Meta before saving it. It stores the token encrypted by Windows, so only your Windows account on this computer can read it.</span>
+      </label>
+      <div><button class="btn primary">Check and save</button></div>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="card" id="test">
+    <header><h2>Test account</h2><span class="badge test">simulator</span></header>
+    <p class="muted">A made-up Meta account with a dozen or so campaigns and posts. Post images are placeholders (or free photos with a "TEST" watermark, if they were downloaded). The program then talks to the simulator instead of Meta, so you can safely practise with reports.</p>
+    <form method="post" action="/settings/test" class="stack" style="gap:12px;margin-top:12px">
+      <label class="f">Account
+        <select class="ctl" name="account">{% for n, name, used in accounts %}<option value="{{ n }}">{{ '%02d' % n }}: {{ name }}{{ ' (already added)' if used }}</option>{% endfor %}</select>
+      </label>
+      <label class="check"><input type="checkbox" name="history" value="1" checked><span>Build a year of history right away (a few minutes; the program fast-forwards time and syncs week by week)</span></label>
+      <div><button class="btn">Add test account</button></div>
+    </form>
+  </section>
+</div>
+
+<div class="grid2" style="margin-bottom:16px">
+  <section class="card" id="schedule">
+    <header><h2>Automatic runs</h2></header>
+    <p class="muted">Windows Task Scheduler: a full sync every day at 6:00 and hourly readings of posts younger than 7 days from 8:00 to 22:00, for all Meta connections (test accounts are skipped). If the computer was off, the task runs right after it is turned on.</p>
+    <dl class="kv" style="margin:12px 0">
+      {% for name, ok in tasks.items() %}
+      <dt>{{ name.split('\\')[-1] }}</dt><dd>{% if ok %}<span class="status-ok">created</span>{% elif ok is none %}<span class="muted">cannot be checked</span>{% else %}<span class="err">none</span>{% endif %}</dd>
+      {% endfor %}
+    </dl>
+    <form method="post" action="/schedule" class="actions">
+      <button class="btn primary" name="tasks" value="install" {% if demo or not has_meta %}disabled title="{{ 'Disabled in demo mode' if demo else 'Add a Meta connection first' }}"{% endif %}>{{ 'Create again' if tasks.values() | select | list else 'Create tasks' }}</button>
+      {% if tasks.values() | select | list %}<button class="btn" name="tasks" value="remove">Remove tasks</button>{% endif %}
+    </form>
+  </section>
+
+  <section class="card">
+    <header><h2>Data and security</h2></header>
+    <dl class="kv">
+      <dt>Version</dt><dd>Metastat {{ version }}</dd>
+      <dt>Data folder</dt><dd><span class="code">{{ home }}</span></dd>
+      <dt>Tokens</dt><dd>encrypted by Windows (DPAPI); a copy of the file on another computer does not reveal them</dd>
+      <dt>Program window</dt><dd>the server runs on this computer only and answers only the Metastat window</dd>
+    </dl>
+    <form method="post" action="/settings/folder" style="margin-top:14px"><button class="btn"><svg class="icon"><use href="#i-folder"/></svg>Open data folder</button></form>
+  </section>
+</div>
+
+<section class="card" id="general">
+  <header><h2>General settings</h2><span class="sub">shared by all connections</span></header>
+  <form method="post" action="/settings/general">
+    <div class="formgrid">
+      <label class="f">Graph API version<input class="ctl" name="graph_api_version" value="{{ settings.graph_api_version }}" pattern="v\d{1,2}\.\d" required><span class="hint">e.g. v24.0; change it when Meta retires a version</span></label>
+      <label class="f">History from<input class="ctl" type="date" name="backfill_since" value="{{ settings.backfill_since }}" required><span class="hint">the first sync fetches daily data from this date</span></label>
+      <label class="f">Post reading window (days)<input class="ctl" type="number" name="snapshot_window_days" min="7" max="400" value="{{ settings.snapshot_window_days }}" required><span class="hint">how long the program reads posts once a day</span></label>
+      <label class="f">Fresh posts (hours)<input class="ctl" type="number" name="fresh_hours" min="0" max="720" value="{{ settings.fresh_hours }}" required><span class="hint">how long a post is read every hour</span></label>
+      <label class="f">Follower jump (%)<input class="ctl" type="number" name="flags.follower_jump_pct" min="1" max="1000" value="{{ settings.flags.follower_jump_pct }}" required><span class="hint">a larger change in a day goes to "To check"</span></label>
+      <label class="f">"Drop to a handful" from<input class="ctl" type="number" name="flags.follower_collapse_from" min="1" max="1000000" value="{{ settings.flags.follower_collapse_from }}" required><span class="hint">a profile with this many followers that suddenly has a few</span></label>
+    </div>
+    <div style="margin-top:16px"><button class="btn primary">Save settings</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

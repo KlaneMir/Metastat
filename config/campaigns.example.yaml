@@ -1,0 +1,15 @@
+# Example of the old layout (before version 1.0). Campaigns are now added in the program: Settings → connection.
+# If a config/campaigns.yaml in this format is present on the first start, the program takes these campaigns over
+# into a connection named "Meta campaigns". All data below is made up. Status is "active" or "ended".
+campaigns:
+  - id: example-campaign
+    name: Example campaign
+    label: DAIRY
+    status: active
+    fb_page_id: "100000000000001"
+    ig_username: example_account
+  - id: campaign-without-instagram
+    name: Campaign without Instagram
+    status: ended
+    fb_page_id: "100000000000002"
+    ig_username: null

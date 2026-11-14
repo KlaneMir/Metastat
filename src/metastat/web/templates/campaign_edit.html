@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ 'New campaign' if new else camp.name }}{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/settings">Settings</a><span>/</span><a href="/settings/connection/{{ x.id }}">{{ x.name }}</a><span>/</span><span>{{ 'New campaign' if new else 'Edit campaign' }}</span></nav>
+<div class="head"><h1>{{ 'New campaign' if new else camp.name }}</h1></div>
+{% if error %}<div class="notice error" role="alert"><svg class="icon"><use href="#i-alert"/></svg><span>{{ error }}</span></div>{% endif %}
+
+<form method="post" action="/settings/connection/{{ x.id }}/campaign/{{ camp_id }}">
+  <section class="card">
+    <div class="formgrid">
+      <label class="f">Campaign name<input class="ctl" name="name" maxlength="120" required value="{{ camp.name or '' }}"></label>
+      <label class="f">Label<input class="ctl" name="label" maxlength="20" value="{{ camp.label or '' }}" placeholder="e.g. DAIRY"><span class="hint">shown next to the name and in reports</span></label>
+      <label class="f">Status
+        <select class="ctl" name="status">{% for s in ('active', 'ended') %}<option value="{{ s }}" {{ 'selected' if (camp.status or 'active') == s }}>{{ s }}</option>{% endfor %}</select>
+      </label>
+      <label class="f">Facebook page ID<input class="ctl" name="fb" inputmode="numeric" pattern="\d*" value="{{ camp.fb_page_id or '' }}"><span class="hint">digits only; empty when the campaign has no page</span></label>
+      <label class="f">Instagram account<input class="ctl" name="ig" maxlength="31" value="{{ camp.ig_username or '' }}" placeholder="account_name"><span class="hint">without @; a business account linked to the page</span></label>
+    </div>
+    <label class="check" style="margin-top:16px"><input type="checkbox" name="ig_skip" value="1" {{ 'checked' if camp.ig_skip }}><span><b>Skip Instagram</b>: a known problem with the account (e.g. it is not a business account yet). Syncs will skip this account and not report an error.</span></label>
+  </section>
+  <div class="actions"><button class="btn primary">Save campaign</button><a class="btn" href="/settings/connection/{{ x.id }}">Cancel</a></div>
+</form>
+{% endblock %}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Metastat{% endblock %} · Metastat</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css?v={{ v }}">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 20 20"><path d="M3 9.2L10 3l7 6.2V17h-4.5v-4.5h-5V17H3z"/></symbol>
+  <symbol id="i-report" viewBox="0 0 20 20"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5z"/><path d="M12 2.5V6h3.5M7.5 14v-3M10 14V9M12.5 14v-1.5"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 20 20"><path d="M16.5 10a6.5 6.5 0 01-11.4 4.3M3.5 10a6.5 6.5 0 0111.4-4.3M15.4 2.6v3.4H12M4.6 17.4V14H8"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5l1.3 2 2.3-.6.6 2.3 2.3.6-.6 2.3 1.6 1.4-1.6 1.4.6 2.3-2.3.6-.6 2.3-2.3-.6-1.3 2-1.3-2-2.3.6-.6-2.3-2.3-.6.6-2.3L2.5 10.4 4 9l-.6-2.3 2.3-.6.6-2.3 2.3.6z"/></symbol>
+  <symbol id="i-views" viewBox="0 0 16 16"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="i-likes" viewBox="0 0 16 16"><path d="M8 13.5S2 10 2 5.9A3 3 0 018 4.3a3 3 0 016 1.6C14 10 8 13.5 8 13.5z"/></symbol>
+  <symbol id="i-comments" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7L4 13.5V11H2.5z"/></symbol>
+  <symbol id="i-shares" viewBox="0 0 16 16"><path d="M9.5 2.5l4 4-4 4M13.5 6.5H8a5 5 0 00-5 5v1"/></symbol>
+  <symbol id="i-saves" viewBox="0 0 16 16"><path d="M4 2.5h8v11l-4-3-4 3z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v4h-9v-9h4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="M6.8 10.2l2.2 2.2 4.3-4.6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 20 20"><path d="M10 2.8l7.8 13.7H2.2z"/><path d="M10 8v3.6M10 14.2v.1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.6M10 6.4v.1"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 16 16"><path d="M3.5 14V2.5h8l-1.5 3 1.5 3h-8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M1.8 4V13h12.4V5.5H7.6L6 4z"/></symbol>
+</svg>
+
+<header class="top">
+  <a class="brand" href="/?{{ pq }}" aria-label="Metastat, dashboard">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="16" fill="#0866FF"/><path d="M9.5 21.5v-5M14 21.5v-9M18.5 21.5v-6.5M23 21.5V10" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <span>Metastat</span>
+  </a>
+  {% if store_mode and connections %}
+  <form class="switch" method="post" action="/connection">
+    <label class="sr" for="conn-switch">Active connection</label>
+    <select class="ctl" id="conn-switch" name="id" data-autosubmit>
+      {% for c in connections %}<option value="{{ c.id }}" {{ 'selected' if active and c.id == active.id }}>{{ c.name }}</option>{% endfor %}
+    </select>
+    {% if active %}<span class="badge {{ 'test' if active.kind == 'fake' else 'blue' }} kind">{{ 'Test account' if active.kind == 'fake' else 'Meta' }}</span>{% endif %}
+    <noscript><button class="btn sm">Switch</button></noscript>
+  </form>
+  {% elif store_mode %}
+  <a class="btn sm blue-soft" href="/settings"><svg class="icon"><use href="#i-plus"/></svg>Add connection</a>
+  {% endif %}
+  <div class="syncstate" role="status">
+    {% if syncing %}
+      {% set state = (job_label or 'Working in the background') ~ '…' %}<i class="dot run" title="{{ state }}"></i><span class="txt">{{ state }}</span>
+    {% elif last_run %}
+      {% set state = 'Last sync ' ~ (last_run.finished_utc | localtime) ~ (' · with errors' if last_run.status != 'ok' else '') %}
+      <i class="dot {{ 'ok' if last_run.status == 'ok' else 'bad' }}" title="{{ state }}"></i><span class="txt">{{ state }}</span>
+    {% else %}
+      <i class="dot" title="Not synced yet"></i><span class="txt">Not synced yet</span>
+    {% endif %}
+    <form method="post" action="/sync"><button class="btn primary sm" {% if syncing %}disabled title="The program is already working in the background"{% endif %}><svg class="icon"><use href="#i-sync"/></svg><span class="long">Sync</span></button></form>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="side" aria-label="Main">
+    <a href="/?{{ pq }}" {% if nav == 'dashboard' %}aria-current="page"{% endif %}><svg class="icon"><use href="#i-home"/></svg>Dashboard</a>
+    <a href="/reports" {% if nav == 'reports' %}aria-current="page"{% endif %}><svg class="icon"><use href="#i-report"/></svg>Reports</a>
+    <a href="/status" {% if nav == 'status' %}aria-current="page"{% endif %}><svg class="icon"><use href="#i-sync"/></svg>Sync</a>
+    <a href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}><svg class="icon"><use href="#i-gear"/></svg>Settings</a>
+    {% if active %}
+    <div class="foot">Active connection<b>{{ active.name }}</b>{{ active.campaigns | length }} {{ 'campaign' if active.campaigns | length == 1 else 'campaigns' }}</div>
+    {% endif %}
+  </nav>
+
+  <main>
+    {% if demo %}<div class="testbar"><svg class="icon"><use href="#i-alert"/></svg><span><b>Demo mode.</b> The Facebook pages, Instagram accounts, posts, numbers and images are made up; the program does not connect to Meta, only to the built-in simulator.</span></div>
+    {% elif fake %}<div class="testbar"><svg class="icon"><use href="#i-alert"/></svg><span><b>Test account (API simulator).</b> The campaigns, numbers, texts and photos are made up; syncing talks to the simulator, not to Meta.</span></div>{% endif %}
+    {% if msg %}<div class="notice {{ msg[0] }}" role="status"><svg class="icon"><use href="#i-{{ {'ok': 'check', 'error': 'alert'}.get(msg[0], 'info') }}"/></svg><span>{{ msg[1] }}</span></div>{% endif %}
+    {% block content %}{% endblock %}
+    <footer class="page">Source: Meta Graph API and the program's own records. Dates and times are in Warsaw time.</footer>
+  </main>
+</div>
+<script src="/static/app.js?v={{ v }}"></script>
+</body>
+</html>

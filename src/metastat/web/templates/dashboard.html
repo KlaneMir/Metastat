@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_frames.html" import delta, change, periodbar, post_card %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{% if no_connection %}
+<section class="card empty">
+  <h2>Welcome to Metastat</h2>
+  <p>The program shows statistics for Facebook pages and Instagram accounts once you add a connection. Paste a system user token from Business Manager, or start with a test account that has made-up data.</p>
+  <div class="actions">
+    <a class="btn primary" href="/settings#meta"><svg class="icon"><use href="#i-plus"/></svg>Add Meta token</a>
+    <a class="btn" href="/settings#test">Add test account</a>
+  </div>
+</section>
+{% elif empty and syncing %}
+<div class="head"><h1>Dashboard</h1></div>
+<section class="card empty">
+  <h2>{{ 'Preparing demo data' if demo else 'Fetching data' }}</h2>
+  <p>{% if demo %}The program is building made-up accounts, pages and posts for the last few months. This takes about a minute; the page refreshes by itself.{% else %}{{ job_label }} is in progress. The page refreshes by itself when it is done.{% endif %}</p>
+  <div class="logbox" id="synclog" data-running="1" aria-live="polite" style="text-align:left;max-width:720px;margin:12px auto 0"></div>
+</section>
+{% elif empty %}
+<div class="head"><h1>Dashboard</h1></div>
+<section class="card empty">
+  <h2>No data yet</h2>
+  <p>{% if fake %}This test account has no history yet. Build a year of history (a few minutes) or run a single sync.{% else %}Statistics appear after the first sync. Check the connection first: the program tests the token, the pages and the available metrics.{% endif %}</p>
+  <div class="actions">
+    <form method="post" action="/sync"><button class="btn primary"><svg class="icon"><use href="#i-sync"/></svg>Sync now</button></form>
+    {% if active and fake %}<form method="post" action="/settings/connection/{{ active.id }}/history"><button class="btn">Build a year of history</button></form>
+    {% elif active %}<form method="post" action="/settings/connection/{{ active.id }}/check"><button class="btn">Check connection</button></form>{% endif %}
+  </div>
+</section>
+{% else %}
+<div class="head">
+  <h1>Dashboard</h1>
+  <span class="sub">{{ rows | length }} {{ 'campaign' if rows | length == 1 else 'campaigns' }}</span>
+  <div class="sp grow">{{ periodbar(period, presets, preset_key, prev, keep) }}</div>
+</div>
+
+<div class="grid2" style="margin-bottom:16px">
+  {% for pl, t, label in (('fb', total_fb, 'Facebook'), ('ig', total_ig, 'Instagram')) %}
+  <section class="card">
+    <header><h2 class="pf {{ pl }}">{{ label }}</h2><span class="sub">all campaigns</span></header>
+    <dl class="metrics">
+      <div class="metric"><dt>Followers</dt><dd>{{ t.followers | num }}<small>{{ change(t.followers_change) }} in period</small></dd></div>
+      <div class="metric"><dt>Views</dt><dd>{{ t.views | num }}</dd></div>
+      <div class="metric"><dt>Interactions</dt><dd>{{ t.interactions | num }}</dd></div>
+      <div class="metric"><dt>Posts</dt><dd>{{ t.posts | num }}</dd></div>
+    </dl>
+  </section>
+  {% endfor %}
+</div>
+
+<section class="card flush">
+  <header><h2>Campaigns</h2><span class="sub">under each number: the change against {{ prev.label() }}</span></header>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th class="l">Campaign</th><th class="l">Platform</th>
+        <th>Followers</th><th>Change</th><th>Views</th><th>Posts</th>
+        <th>Likes</th><th>Comments</th><th>Shares</th><th>Interactions</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        {% set pls = r.platforms.items() | list %}
+        {% for pl, m in pls %}
+        <tr class="{{ 'first' if loop.first }}">
+          {% if loop.first %}
+          <td class="l camp" rowspan="{{ pls | length }}">
+            <a href="/campaign/{{ r.campaign.id }}?{{ pq }}">{{ r.campaign.name }}</a>
+            <span class="meta">{% if r.campaign.label %}<span class="badge">{{ r.campaign.label }}</span>{% endif %}{% if r.campaign.status == 'ended' %}<span class="badge end">ended</span>{% endif %}</span>
+            {% if flag_counts[r.campaign.id] %}<a class="flagmark" href="/campaign/{{ r.campaign.id }}?{{ pq }}#flags"><svg class="icon"><use href="#i-flag"/></svg>{{ flag_counts[r.campaign.id] }} to check</a>{% endif %}
+          </td>
+          {% endif %}
+          <td class="pl l"><span class="pf {{ pl }}" style="font-weight:600">{{ 'Facebook' if pl == 'fb' else 'Instagram' }}</span></td>
+          {% if m is none %}
+          <td colspan="8" class="na">{% if pl == 'ig' and r.campaign.ig_skip %}The account @{{ r.campaign.ig_username }} is skipped in the campaign settings.{% elif pl == 'ig' %}The account @{{ r.campaign.ig_username }} is not synced yet or is not visible to the API.{% else %}The page is not synced yet.{% endif %}</td>
+          {% else %}
+          <td>{{ m.followers | num }}</td>
+          <td>{{ change(m.followers_change) }}</td>
+          <td>{{ m.views | num }}{{ delta(m.delta.views) }}</td>
+          <td>{{ m.posts | num }}{{ delta(m.delta.posts) }}</td>
+          <td>{{ m.likes | num }}{{ delta(m.delta.likes) }}</td>
+          <td>{{ m.comments | num }}{{ delta(m.delta.comments) }}</td>
+          <td>{{ m.shares | num }}{{ delta(m.delta.shares) }}</td>
+          <td>{{ m.interactions | num }}{{ delta(m.delta.interactions) }}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        {% for pl, t in (('fb', total_fb), ('ig', total_ig)) %}
+        <tr>
+          {% if loop.first %}<td class="l" rowspan="2">Total</td>{% endif %}
+          <td class="pl l">{{ 'Facebook' if pl == 'fb' else 'Instagram' }}</td>
+          <td>{{ t.followers | num }}</td><td>{{ change(t.followers_change) }}</td>
+          <td>{{ t.views | num }}</td><td>{{ t.posts | num }}</td><td>{{ t.likes | num }}</td>
+          <td>{{ t.comments | num }}</td><td>{{ t.shares | num }}</td><td>{{ t.interactions | num }}</td>
+        </tr>
+        {% endfor %}
+      </tfoot>
+    </table>
+  </div>
+</section>
+<p class="note">
+  <b>Followers</b>: the recorded state on the last day of the period. <b>Views</b> and <b>interactions</b>: all profile activity in the period,
+  paid and organic, including older posts and ads. <b>Posts, likes, comments, shares</b>: posts published
+  in the period, as of the last reading before the period ended. Profile and cover photo changes are not counted as posts.
+</p>
+
+{% if top %}
+<div class="section-head"><h2>Most viewed posts</h2><span class="muted small">all campaigns; the bar under each image shows views on a shared scale</span></div>
+<div class="posts">
+  {% for p in top %}{{ post_card(p, p.campaign.name if p.campaign else '', top=loop.first, max_views=top[0].views) }}{% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

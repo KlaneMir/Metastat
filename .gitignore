@@ -1,0 +1,33 @@
+# secrets and local settings
+.env
+
+# program data (connections, databases, post images, reports, logs)
+data/
+data-demo/
+logs/
+config/campaigns.yaml
+# old (Polish) folder names from earlier versions
+dane/
+dane-demo/
+
+# simulator stock photos (downloaded with: metastat fake photos)
+src/metastat/fakeapi/stock/
+
+# build output
+.venv/
+build/
+dist/
+portable/
+installer/
+# old (Polish) build folder names from earlier versions
+przenosny/
+instalator/
+Program/
+*.spec
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# tools
+graphify-out/
+.impeccable/

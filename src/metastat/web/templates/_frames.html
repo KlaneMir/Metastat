@@ -1,0 +1,54 @@
+{% macro delta(d) -%}
+  {%- if d is none -%}<span class="d">–</span>
+  {%- else -%}<span class="d {{ 'up' if d.dir == 'up' else 'down' if d.dir == 'down' else '' }}">{{ d.abs | signed }}{% if d.pct is not none and d.pct | abs >= 1 %} ({{ ('+' if d.pct > 0 else '−') ~ (d.pct | abs | round | int) }}%){% endif %}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro change(v) -%}
+<span class="{{ 'up' if (v or 0) > 0 else 'down' if (v or 0) < 0 else '' }}">{{ v | signed }}</span>
+{%- endmacro %}
+
+{% macro periodbar(period, presets, preset_key, prev, keep) -%}
+<form class="period" method="get" aria-label="Period">
+  {% for k, v in (keep or {}).items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <div class="pills">
+    {% for key, label in presets %}<a href="?p={{ key }}{% for k, v in (keep or {}).items() %}&amp;{{ k }}={{ v | urlencode }}{% endfor %}" aria-current="{{ 'true' if preset_key == key else 'false' }}">{{ label }}</a>{% endfor %}
+  </div>
+  <label class="sr" for="p-from">From</label><input class="ctl" id="p-from" type="date" name="from" value="{{ period.start.isoformat() }}">
+  <span class="muted">–</span>
+  <label class="sr" for="p-to">To</label><input class="ctl" id="p-to" type="date" name="to" value="{{ period.end.isoformat() }}">
+  <button class="btn sm">Show</button>
+  <span class="compare">{{ period.label() }} · compared with {{ prev.label() }}</span>
+</form>
+{%- endmacro %}
+
+{% macro stats(p) -%}
+  <span title="Views"><svg class="icon"><use href="#i-views"/></svg>{{ p.views | num }}</span>
+  <span title="{{ 'Reactions' if p.platform == 'fb' else 'Likes' }}"><svg class="icon"><use href="#i-likes"/></svg>{{ p.reactions | num }}</span>
+  <span title="Comments"><svg class="icon"><use href="#i-comments"/></svg>{{ p.comments | num }}</span>
+  <span title="Shares"><svg class="icon"><use href="#i-shares"/></svg>{{ p.shares | num }}</span>
+{%- endmacro %}
+
+{% macro post_card(p, name, top=false, max_views=0) -%}
+{% set ig = p.platform == 'ig' %}
+<a class="pcard" href="/post/{{ p.platform }}/{{ p.id }}" aria-label="{{ 'Instagram' if ig else 'Facebook' }}, post from {{ p.created_local | dmyhm }}">
+  <div class="pc-head">
+    <span class="av mark {{ 'ig' if ig }}" aria-hidden="true">{{ (name or '?')[:1] | upper }}</span>
+    <span class="who"><b>{{ name }}</b><span>{{ 'Instagram' if ig else 'Facebook' }} · {{ p.created_local | dmyhm }}</span></span>
+  </div>
+  <p class="pc-text">{{ p.text or ('Photo change' if p.kind != 'post' else 'No caption') }}</p>
+  <span class="pc-img">
+    {% if p.image %}<img loading="lazy" alt="" src="/img/{{ p.image[7:] }}">{% else %}<span class="gone">No image</span>{% endif %}
+    {% if top %}<span class="pc-top">Most views</span>{% endif %}
+  </span>
+  <div class="pc-bar" title="Views (bar: one shared scale for all posts in the list)">
+    <svg class="icon"><use href="#i-views"/></svg><span>{{ p.views | num }}</span>
+    <span class="ramp {{ 'ig' if ig }}" aria-hidden="true"><i style="width:{{ ((p.views or 0) * 100 / max_views) | round | int if max_views else 0 }}%"></i></span>
+  </div>
+  <div class="pc-stats">
+    <span title="{{ 'Likes' if ig else 'Reactions' }}"><svg class="icon"><use href="#i-likes"/></svg>{{ p.reactions | num }}</span>
+    <span title="Comments"><svg class="icon"><use href="#i-comments"/></svg>{{ p.comments | num }}</span>
+    <span title="Shares"><svg class="icon"><use href="#i-shares"/></svg>{{ p.shares | num }}</span>
+  </div>
+</a>
+{%- endmacro %}

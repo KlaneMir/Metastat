@@ -1,0 +1,79 @@
+/* Report: a calm document for the client in the "contact sheet" style (DESIGN.md), print version. */
+:root{
+  --paper:#FFFFFF; --ink:#141414; --ink-2:#4A4A46; --rule:#D6D6D0; --soft:#F4F4F2;
+  --up:#2E7D4F; --down:#B8281F; --amber:#E39B2D;
+  --sans:"Segoe UI",Arial,"Noto Color Emoji","Segoe UI Emoji",sans-serif;
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:9pt/1.4 var(--sans);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1{font-size:20pt;line-height:1.15;margin:0 0 3pt}
+h2{font-size:15pt;line-height:1.2;margin:0 0 2pt}
+h3{font-size:10.5pt;margin:14pt 0 5pt}
+.sub{color:var(--ink-2);margin:0 0 10pt}
+.lead{font-size:10.5pt;max-width:150mm;margin:0 0 12pt}
+.demo{background:var(--amber);padding:4pt 8pt;font-weight:600;margin:0 0 10pt}
+section.page{break-before:page}
+section.page.first{break-before:auto}
+
+table{border-collapse:collapse;width:100%;font-size:8pt}
+th{background:var(--ink);color:#fff;font-weight:600;text-align:right;padding:4pt 5pt;vertical-align:bottom}
+th.l,td.l{text-align:left}
+td{padding:3pt 5pt;border-bottom:0.5pt solid var(--rule);text-align:right;vertical-align:top}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td .d{display:block;font:6pt/1.3 var(--mono);color:var(--ink-2);white-space:nowrap}
+table.summary{font-size:7.5pt}
+table.summary td{padding:2.5pt 4pt}
+table.summary th{padding:3.5pt 4pt}
+.up{color:var(--up)}.down{color:var(--down)}
+td.camp{font-weight:600;max-width:52mm}
+td.camp small{display:block;font-weight:400;color:var(--ink-2)}
+td.pl{font:600 7pt var(--mono);color:var(--ink-2)}
+tr.grp td{border-top:0.8pt solid var(--rule)}
+tr.total td{background:var(--soft);font-weight:600;border-top:0.8pt solid var(--ink)}
+tr.muted td{color:var(--ink-2);font-style:italic}
+tr{break-inside:avoid}
+thead{display:table-header-group}
+.flag{color:var(--down);font-weight:600}
+.notes{margin-top:8pt;font-size:7.5pt;color:var(--ink-2);max-width:180mm}
+.notes p{margin:0 0 3pt}
+.notes b{color:var(--ink)}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);border-top:0.8pt solid var(--ink);border-bottom:0.5pt solid var(--rule);margin:8pt 0 4pt}
+.tiles div{padding:6pt 8pt 7pt 0}
+.tiles dt{font-size:7.5pt;color:var(--ink-2)}
+.tiles dd{margin:1pt 0 0;font:600 14pt/1.15 var(--mono)}
+.tiles dd small{display:block;font:400 7pt/1.4 var(--mono);color:var(--ink-2)}
+.post-text{max-width:70mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--ink-2);font-style:italic;margin:2pt 0 6pt}
+
+/* post card pages: 2 cards side by side */
+section.cards h2{margin-bottom:8pt}
+.cardrow{display:grid;grid-template-columns:1fr 1fr;gap:8mm;break-inside:avoid;margin-bottom:6mm}
+.cardrow + .cardrow{break-before:page}
+
+/* post card (PDF and JPG) */
+.card{border:0.75pt solid var(--rule);background:#fff;break-inside:avoid;font-family:var(--sans)}
+.card-head{padding:8pt 10pt 0}
+.card-head b{display:block;font-size:9.5pt}
+.card-head span{font-size:7.5pt;color:var(--ink-2)}
+.card-text{padding:6pt 10pt 8pt;white-space:pre-wrap;overflow-wrap:anywhere;font-size:8pt;line-height:1.4}
+.card-img img{width:100%;display:block;max-height:150mm;object-fit:contain;background:var(--soft)}
+.card-noimg{padding:20pt;text-align:center;color:var(--ink-2);background:var(--soft)}
+.card-metrics{display:grid;grid-template-columns:repeat(4,1fr);margin:0;border-top:0.75pt solid var(--rule)}
+.card-metrics div{padding:5pt 8pt}
+.card-metrics dt{font-size:6.5pt;color:var(--ink-2)}
+.card-metrics dd{margin:0;font:600 10pt var(--mono)}
+
+/* separate JPG file: larger scale, 800 px wide */
+body.single{background:#fff;padding:0;width:800px}
+body.single .card{border:none;font-size:15px}
+body.single .card-head{padding:22px 26px 0}
+body.single .card-head b{font-size:20px}
+body.single .card-head span{font-size:14px}
+body.single .card-text{padding:12px 26px 18px;font-size:16px;line-height:1.45}
+body.single .card-img img{max-height:none}
+body.single .card-metrics div{padding:12px 26px}
+body.single .card-metrics dt{font-size:13px}
+body.single .card-metrics dd{font-size:20px}

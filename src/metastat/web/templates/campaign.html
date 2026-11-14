@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_frames.html" import change, periodbar, post_card %}
+{% block title %}{{ camp.name }}{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/?{{ pq }}">Dashboard</a><span>/</span><span>{{ camp.name }}</span></nav>
+<div class="head">
+  <h1>{{ camp.name }}</h1>
+  {% if camp.label %}<span class="badge">{{ camp.label }}</span>{% endif %}
+  {% if camp.status == 'ended' %}<span class="badge end">ended</span>{% endif %}
+  <div class="sp grow">{{ periodbar(period, presets, preset_key, prev, keep) }}</div>
+</div>
+
+<div class="grid2">
+  {% for pl, label in (('fb', 'Facebook'), ('ig', 'Instagram')) %}
+  {% if (pl == 'fb' and camp.fb_page_id) or (pl == 'ig' and camp.ig_username) %}
+  {% set m = metrics[pl] %}
+  <section class="card">
+    <header><h2 class="pf {{ pl }}">{{ label }}</h2>{% if pl == 'ig' %}<span class="sub">@{{ camp.ig_username }}</span>{% endif %}</header>
+    {% if m %}
+    <dl class="metrics">
+      <div class="metric"><dt title="As of {{ period.end | dmy }}">Followers</dt><dd>{{ m.followers | num }}<small>{{ change(m.followers_change) }} in period</small></dd></div>
+      <div class="metric"><dt>Views</dt><dd>{{ m.views | num }}{% if m.views_paid is not none and m.views %}<small class="muted">{{ (m.views_paid * 100 / m.views) | round | int }}% paid</small>{% endif %}</dd></div>
+      <div class="metric"><dt>Interactions</dt><dd>{{ m.interactions | num }}</dd></div>
+      <div class="metric"><dt>Posts</dt><dd>{{ m.posts | num }}</dd></div>
+      <div class="metric"><dt>{{ 'Reactions' if pl == 'fb' else 'Likes' }}</dt><dd>{{ m.likes | num }}</dd></div>
+      <div class="metric"><dt>Comments</dt><dd>{{ m.comments | num }}</dd></div>
+      <div class="metric"><dt>Shares</dt><dd>{{ m.shares | num }}</dd></div>
+    </dl>
+    <h3 style="margin:16px 0 8px">Followers day by day</h3>
+    {% if chart[pl] %}{{ chart[pl] | safe }}{% else %}<p class="nodata">No follower records in this period.</p>{% endif %}
+    {% else %}
+    <p class="muted">{% if pl == 'ig' and camp.ig_skip %}The account @{{ camp.ig_username }} is skipped in syncs (campaign settings). Turn skipping off once the account is a business account linked to the page.{% elif pl == 'ig' %}The account @{{ camp.ig_username }} is not visible to the API or has not been synced yet. It must be a business account linked to a page that is assigned to the system user.{% else %}The page has not been synced yet.{% endif %}</p>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% endfor %}
+</div>
+<p class="note">Followers: the recorded state on the last day. Views and interactions: all profile activity in {{ period.label() }}.
+  Reactions, comments and shares: under posts published in this period.</p>
+
+{% if flags %}
+<section class="card flush" id="flags" style="margin-top:16px">
+  <header><h2>To check</h2><span class="sub">suspicious values or access errors; nothing is hidden</span></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Date</th><th class="l">Kind</th><th class="l">Details</th></tr></thead>
+    <tbody>{% for f in flags %}<tr><td class="l">{{ f.date | dmy }}</td><td class="l"><span class="badge bad">{{ {'jump': 'Follower jump', 'collapse': 'Followers dropped to a handful', 'negative_value': 'Negative value', 'ig_not_found': 'IG account not visible'}.get(f.kind, f.kind) }}</span></td><td class="l wrap">{{ f.detail }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<div class="section-head">
+  <h2>Posts</h2>
+  <div class="pills" role="group" aria-label="Platform">
+    {% for key, label in (('all', 'All'), ('fb', 'Facebook'), ('ig', 'Instagram')) %}
+    <a href="?{{ pq }}&amp;platform={{ key }}&amp;view={{ view }}&amp;sort={{ sort }}" aria-current="{{ 'true' if platform == key else 'false' }}">{{ label }}</a>{% endfor %}
+  </div>
+  <div class="sp actions">
+    <div class="pills" role="group" aria-label="View">
+      {% for key, label in (('grid', 'Grid'), ('table', 'Table')) %}
+      <a href="?{{ pq }}&amp;platform={{ platform }}&amp;view={{ key }}&amp;sort={{ sort }}" aria-current="{{ 'true' if view == key else 'false' }}">{{ label }}</a>{% endfor %}
+    </div>
+    <form method="get" class="f inline">
+      {% for k, v in request.query_params.items() if k != 'sort' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <label for="sort" class="muted" style="font-weight:600">Sort by</label>
+      <select class="ctl" id="sort" name="sort" data-autosubmit style="height:32px">
+        {% for key, label in (('date', 'Publication date'), ('views', 'Views'), ('likes', 'Reactions / likes'), ('comments', 'Comments'), ('shares', 'Shares')) %}
+        <option value="{{ key }}" {{ 'selected' if sort == key }}>{{ label }}</option>{% endfor %}
+      </select>
+      <noscript><button class="btn sm">Sort</button></noscript>
+    </form>
+  </div>
+</div>
+
+{% if not posts %}
+<section class="card empty"><p>No posts published in {{ period.label() }}.</p></section>
+{% elif view == 'grid' %}
+<div class="posts">
+  {% for p in posts %}{{ post_card(p, camp.name, top=(p.id == top_id), max_views=max_views) }}{% endfor %}
+</div>
+<p class="note">The bar under each image: views on one shared scale for all posts in the list.</p>
+{% else %}
+<section class="card flush">
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l"><span class="sr">Image</span></th><th class="l">Date and time</th><th class="l">Platform</th><th class="l">Type</th><th class="l">Text</th>
+      <th>Views</th><th>Paid</th><th>Reactions</th><th>Comments</th><th>Shares</th><th>Saves</th><th class="l"><span class="sr">Link</span></th></tr></thead>
+    <tbody>
+    {% for p in posts %}
+      <tr>
+        <td class="l">{% if p.image %}<a href="/post/{{ p.platform }}/{{ p.id }}"><img class="thumb" loading="lazy" alt="" src="/img/{{ p.image[7:] }}"></a>{% endif %}</td>
+        <td class="l"><a href="/post/{{ p.platform }}/{{ p.id }}">{{ p.created_local | dmyhm }}</a></td>
+        <td class="l"><span class="pf {{ p.platform }}" style="font-weight:600">{{ 'Facebook' if p.platform == 'fb' else 'Instagram' }}</span></td>
+        <td class="l">{{ p.type }}</td>
+        <td class="l" style="max-width:44ch;overflow:hidden;text-overflow:ellipsis" title="{{ p.text }}">{{ p.text or '–' }}</td>
+        <td>{{ p.views | num }}</td><td>{{ p.paid | num }}</td><td>{{ p.reactions | num }}</td>
+        <td>{{ p.comments | num }}</td><td>{{ p.shares | num }}</td><td>{{ p.saves | num }}</td>
+        <td class="l">{% if p.permalink | safe_url %}<a href="{{ p.permalink | safe_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open the post on the platform"><svg class="icon"><use href="#i-link"/></svg></a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

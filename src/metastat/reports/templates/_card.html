@@ -1,0 +1,17 @@
+{# Post card: neutral, no platform logos. The same in the PDF and in the JPG files. #}
+{% macro card(p, profile, img_uri) -%}
+<article class="card">
+  <header class="card-head">
+    <b>{{ profile }}</b>
+    <span>{{ 'Facebook' if p.platform == 'fb' else 'Instagram' }} · {{ p.created_local | dmyhm }}{% if p.kind != 'post' %} · {{ p.type }}{% endif %}</span>
+  </header>
+  <div class="card-text">{{ p.text or ('Photo change' if p.kind != 'post' else 'No caption') }}</div>
+  {% if img_uri %}<div class="card-img"><img src="{{ img_uri }}" alt=""></div>{% else %}<div class="card-noimg">No image</div>{% endif %}
+  <dl class="card-metrics">
+    <div><dt>Views</dt><dd>{{ p.views | num }}</dd></div>
+    <div><dt>{{ 'Reactions' if p.platform == 'fb' else 'Likes' }}</dt><dd>{{ p.reactions | num }}</dd></div>
+    <div><dt>Comments</dt><dd>{{ p.comments | num }}</dd></div>
+    <div><dt>Shares</dt><dd>{{ p.shares | num }}</dd></div>
+  </dl>
+</article>
+{%- endmacro %}

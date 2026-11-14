@@ -1,0 +1,20 @@
+{
+  "timeZone": "Europe/Warsaw",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "urlFetchWhitelist": [
+    "https://graph.facebook.com/"
+  ],
+  "dataStudio": {
+    "name": "Meta – in-house connector",
+    "company": "In-house",
+    "companyUrl": "https://example.com",
+    "logoUrl": "https://www.gstatic.com/images/icons/material/system/2x/insert_chart_black_48dp.png",
+    "addonUrl": "https://example.com",
+    "supportUrl": "https://example.com",
+    "description": "Meta Ads, Facebook page and Instagram data in Looker Studio."
+  }
+}

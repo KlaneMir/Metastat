@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Post {{ p.created_local | dmyhm }}{% endblock %}
+{% block content %}
+{% set fb = p.platform == 'fb' %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/?{{ pq }}">Dashboard</a>{% if p.campaign %}<span>/</span><a href="/campaign/{{ p.campaign.id }}?{{ pq }}">{{ p.campaign.name }}</a>{% endif %}<span>/</span><span>Post statistics</span></nav>
+<div class="head">
+  <h1>Post statistics</h1>
+  <span class="badge">{{ p.type }}</span>
+  {% if p.permalink | safe_url %}<a class="btn sm sp" href="{{ p.permalink | safe_url }}" target="_blank" rel="noopener noreferrer"><svg class="icon"><use href="#i-link"/></svg>Open on {{ 'Facebook' if fb else 'Instagram' }}</a>{% endif %}
+</div>
+
+<div class="postgrid">
+  <aside class="card preview" aria-label="Post preview">
+    <header>
+      <span class="av {{ '' if fb else 'ig' }}" aria-hidden="true">{{ (p.profile or '?')[:1] | upper }}</span>
+      <div><b>{{ p.profile }}</b><span>{{ 'Facebook' if fb else 'Instagram' }} · {{ p.created_local | dmyhm }}</span></div>
+    </header>
+    <div class="text">{{ p.text or ('Photo change' if p.kind != 'post' else 'No caption') }}</div>
+    {% if p.image %}<img alt="Post image" src="/img/{{ p.image[7:] }}">{% endif %}
+    <footer>
+      <span title="Views"><svg class="icon"><use href="#i-views"/></svg>{{ p.views | num }}</span>
+      <span title="{{ 'Reactions' if fb else 'Likes' }}"><svg class="icon"><use href="#i-likes"/></svg>{{ p.reactions | num }}</span>
+      <span title="Comments"><svg class="icon"><use href="#i-comments"/></svg>{{ p.comments | num }}</span>
+      <span title="Shares"><svg class="icon"><use href="#i-shares"/></svg>{{ p.shares | num }}</span>
+    </footer>
+  </aside>
+
+  <div class="stack">
+    <section class="card">
+      <header><h2>Overview</h2><span class="sub">as of the program's last reading</span></header>
+      <dl class="metrics">
+        <div class="metric"><dt>Views</dt><dd>{{ p.views | num }}</dd></div>
+        {% if fb %}<div class="metric"><dt>Viewers</dt><dd>{{ p.viewers | num }}</dd></div>
+        {% else %}<div class="metric"><dt>Reach</dt><dd>{{ p.reach | num }}</dd></div>{% endif %}
+        <div class="metric"><dt>Interactions</dt><dd>{{ p.interactions | num }}</dd></div>
+        {% if fb %}<div class="metric"><dt>Link clicks</dt><dd>{{ p.clicks | num }}</dd></div>
+        {% else %}<div class="metric"><dt>Saves</dt><dd>{{ p.saves | num }}</dd></div>{% endif %}
+        <div class="metric"><dt>{{ 'Reactions' if fb else 'Likes' }}</dt><dd>{{ p.reactions | num }}</dd></div>
+        <div class="metric"><dt>Comments</dt><dd>{{ p.comments | num }}</dd></div>
+        <div class="metric"><dt>Shares</dt><dd>{{ p.shares | num }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="card {{ 'curve-fb' if fb }}">
+      <header><h2>Views since publication</h2></header>
+      {% if p.curve %}
+        {{ chart | safe }}
+        <div class="legend"><span><i></i>This post</span>{% if p.typical %}<span><i class="t"></i>Typical curve of this profile's posts (median)</span>{% endif %}</div>
+      {% else %}
+        <p class="nodata">No readings of this post.</p>
+      {% endif %}
+      <p class="note">The curve is built from the program's readings: hourly for the first 7 days, then once a day. Meta only gives the total since publication, so there is no curve before the first sync.</p>
+    </section>
+
+    {% if fb %}
+    <div class="grid2">
+      <section class="card split">
+        <header><h2>Organic and from ads</h2></header>
+        {% if p.paid is not none %}
+        {% set total = (p.paid or 0) + (p.organic or 0) %}
+        <div class="labels"><span>Organic<b>{{ p.organic | num }}</b></span><span style="text-align:right">From ads<b>{{ p.paid | num }}</b></span></div>
+        <div class="barline" role="img" aria-label="Organic {{ p.organic | num }}, from ads {{ p.paid | num }}">
+          {% if total %}<i style="width:{{ (p.organic * 100 / total) | round(1) }}%"></i><i class="paid" style="width:{{ (p.paid * 100 / total) | round(1) }}%"></i>{% endif %}
+        </div>
+        {% else %}
+        <p class="muted">Meta gave no views split for this post.</p>
+        {% endif %}
+      </section>
+      {% if p.by_type %}
+      <section class="card">
+        <header><h2>Reactions by type</h2></header>
+        <div class="bytype">{% for k, v in p.by_type.items() %}<span>{{ {'like': 'Like', 'love': 'Love', 'care': 'Care', 'haha': 'Haha', 'wow': 'Wow', 'sorry': 'Sad', 'anger': 'Angry'}.get(k, k) }}<b>{{ v | num }}</b></span>{% endfor %}</div>
+      </section>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="card flush">
+      <header><h2>Readings</h2><span class="sub">totals since publication at the time of each reading</span></header>
+      {% if p.history %}
+      <div class="tablewrap" style="max-height:360px"><table>
+        <thead><tr><th class="l">Reading</th><th>Views</th><th>{{ 'Reactions' if fb else 'Likes' }}</th><th>Comments</th><th>Shares</th>{% if not fb %}<th>Saves</th>{% endif %}</tr></thead>
+        <tbody>{% for h in p.history %}<tr>
+          <td class="l">{{ h.taken_utc | localtime }}</td>
+          <td>{{ h.get('post_media_view' if fb else 'views') | num }}</td>
+          <td>{{ h.get('reactions' if fb else 'likes') | num }}</td>
+          <td>{{ h.get('comments') | num }}</td><td>{{ h.get('shares') | num }}</td>
+          {% if not fb %}<td>{{ h.get('saved') | num }}</td>{% endif %}
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="muted" style="padding:0 16px 16px">No readings.</p>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

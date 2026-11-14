@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Sync{% endblock %}
+{% block content %}
+<div class="head"><h1>Sync</h1>{% if active %}<span class="sub">{{ active.name }}</span>{% endif %}</div>
+
+<div class="grid2" style="margin-bottom:16px">
+  <section class="card">
+    <header><h2>Fetching data</h2>{% if syncing %}<span class="badge blue">in progress</span>{% endif %}</header>
+    <dl class="kv">
+      <dt>Token</dt><dd>{% if fake %}simulator (test account){% elif token %}<span class="status-ok">saved</span>{% else %}<span class="err">none</span>, <a href="/settings">add it in Settings</a>{% endif %}</dd>
+      <dt>Graph API</dt><dd>{{ version }}</dd>
+      {% if last_run %}<dt>Last run</dt><dd>{{ last_run.finished_utc | localtime }}, <span class="status-{{ last_run.status }}">{{ {'ok': 'no errors', 'partial': 'partly with errors', 'failed': 'failed'}.get(last_run.status, last_run.status) }}</span></dd>{% endif %}
+    </dl>
+    <form method="post" action="/sync" class="actions" style="margin-top:14px">
+      <button class="btn primary" {% if syncing or not token %}disabled{% endif %}><svg class="icon"><use href="#i-sync"/></svg>{{ 'Working…' if syncing else 'Sync now' }}</button>
+      <a class="btn" href="/settings#schedule">Automatic runs</a>
+    </form>
+    <div class="logbox" id="synclog" data-running="{{ '1' if syncing else '0' }}" aria-live="polite">{% if job_lines %}{{ job_lines | join('\n') }}{% elif not syncing %}This is where a sync, a connection check or a history build started from the program shows its progress.{% endif %}</div>
+  </section>
+
+  <section class="card">
+    <header><h2>Current problems</h2><span class="sub">from the last sync; each shown once</span></header>
+    {% if problems.current %}
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">Campaign</th><th class="l">Problem</th><th class="l">Since</th><th>Times</th></tr></thead>
+      <tbody>{% for p in problems.current %}<tr>
+        <td class="l wrap"><b>{{ names.get(p.campaign, p.campaign) }}</b><br><span class="pf {{ p.part }}" style="font-weight:600;font-size:13px">{{ 'Facebook' if p.part == 'fb' else 'Instagram' if p.part == 'ig' else p.part | upper }}</span></td>
+        <td class="l wrap">{{ p.error }}</td>
+        <td class="l">{{ p.first | localtime }}</td>
+        <td>{{ p.count | num }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="note">You can silence a known Instagram account problem (e.g. the account is not a business account yet) in Settings: connection → campaign → "Skip Instagram". Syncs then stop reporting this error.</p>
+    {% else %}<p class="muted"><svg class="icon" style="color:#31A24C"><use href="#i-check"/></svg> None. The last sync finished without errors.</p>{% endif %}
+    {% if problems.resolved %}
+    <p class="note"><b>Resolved:</b> {% for p in problems.resolved %}{{ names.get(p.campaign, p.campaign) }} / {{ p.part | upper }} (last seen {{ p.last | localtime }}){{ '; ' if not loop.last }}{% endfor %}.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card flush">
+  <header><h2>Recent syncs</h2></header>
+  {% if runs %}
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Start</th><th class="l">Kind</th><th class="l">Result</th><th>API requests</th><th class="l">Affects</th></tr></thead>
+    <tbody>{% for r in runs %}<tr>
+      <td class="l">{{ r.started_utc | localtime }}</td>
+      <td class="l">{{ 'hourly (fresh posts)' if r.mode == 'fresh' else 'full' }}</td>
+      <td class="l"><span class="status-{{ r.status }}">{{ {'ok': 'no errors', 'partial': 'partly with errors', 'failed': 'failed', 'running': 'in progress'}.get(r.status, r.status) }}</span></td>
+      <td>{{ r.api_calls | num }}</td>
+      <td class="l wrap">
+        {% if r.error %}<span class="err">{{ r.error }}</span>
+        {% elif r.problems %}{{ r.problems[:2] | join(', ') }}{% if r.problems | length > 2 %} and {{ r.problems | length - 2 }} more{% endif %}
+        {% else %}–{% endif %}
+      </td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted" style="padding:0 16px 16px">No syncs yet.</p>{% endif %}
+</section>
+
+<section class="card flush">
+  <header><h2>To check</h2><span class="sub">last 60 days</span></header>
+  {% if flags %}
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Date</th><th class="l">Affects</th><th class="l">Kind</th><th class="l">Details</th></tr></thead>
+    <tbody>{% for f in flags %}<tr><td class="l">{{ f.date | dmy }}</td><td class="l">{{ f.campaign or f.object_id }}</td>
+      <td class="l"><span class="badge bad">{{ {'jump': 'Follower jump', 'collapse': 'Followers dropped to a handful', 'negative_value': 'Negative value', 'ig_not_found': 'IG account not visible'}.get(f.kind, f.kind) }}</span></td>
+      <td class="l wrap">{{ f.detail }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted" style="padding:0 16px 16px">None.</p>{% endif %}
+</section>
+
+{% if off %}
+<section class="card flush">
+  <header><h2>Metrics Meta no longer provides</h2><span class="sub">they are skipped; "Check connection" in Settings tests them again</span></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th class="l">Scope</th><th class="l">Metric</th><th class="l">Message from Meta</th></tr></thead>
+    <tbody>{% for r in off %}<tr><td class="l">{{ r.scope }}</td><td class="l"><span class="code">{{ r.metric }}</span></td><td class="l wrap">{{ r.error or '' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}
