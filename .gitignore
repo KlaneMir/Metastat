@@ -1,5 +1,8 @@
 # secrets and local settings
 .env
+.env.*
+!.env.example
+.claude/settings.local.json
 
 # program data (connections, databases, post images, reports, logs)
 data/
