@@ -125,6 +125,8 @@ The program creates its data folder next to itself when run from source or as th
 .venv\Scripts\python -m pytest
 ```
 
+The Apps Script connector has its own tests (Node 18+, no packages): `node --test meta-connector/tests/connector.test.js`.
+
 86 tests run against the simulator, with no real token. They cover syncing and pagination, summary totals that match the post lists, XLSX/PDF/ZIP reports, token encryption, the local server protection, sending the token only to the Graph API, demo mode, corrupt data, and two copies of the program starting at once. `tests/test_security_audit.py` is a security audit suite: one test per relevant attack (truncated keys, field limits, ReDoS, spoofed forwarded headers, weak randomness, timing attacks, ciphertext tampering, template injection, Unicode lookalikes).
 
 ## Building the EXE and the installer

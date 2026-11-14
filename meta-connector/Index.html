@@ -230,6 +230,8 @@ function call(fn) {
 
 /* ---------- helpers ---------- */
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+// Links and images from Meta's data: https only (no javascript:, data: or http: URLs), '' otherwise. Still pass through esc().
+function safeUrl(u) { u = String(u == null ? '' : u).trim(); return /^https:\/\//i.test(u) ? u : ''; }
 function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function dmy(ymd) { return ymd ? ymd.slice(6, 8) + '/' + ymd.slice(4, 6) + '/' + ymd.slice(0, 4) : ''; }
 function dmyhm(t) { return t ? dmy(t) + ' ' + t.slice(8, 10) + ':' + t.slice(10, 12) : ''; }
@@ -411,8 +413,8 @@ function renderSheet(rows, ms) {
     var isTop = top && r.post_id === top.post_id;
     return '<article class="frame" aria-label="Frame ' + frameNo[r.post_id] + '">' +
       '<div class="edge"><b>' + frameNo[r.post_id] + '</b><span>' + dmyhm(r.post_time) + '</span><span>' + esc(r.post_type) + '</span></div>' +
-      '<a class="pic" href="' + esc(r.permalink || '#') + '" title="Open post">' +
-        (r.image ? '<img loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(r.image) + '">' : '<span class="gone">No preview</span>') +
+      '<a class="pic" href="' + esc(safeUrl(r.permalink) || '#') + '" title="Open post">' +
+        (safeUrl(r.image) ? '<img loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(safeUrl(r.image)) + '">' : '<span class="gone">No preview</span>') +
         (isTop ? '<svg class="circle" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M55 5C83 3 98 31 97 63c-1 34-20 58-48 57C20 119 3 94 4 61 5 29 25 7 59 9"/></svg>' : '') +
       '</a>' +
       '<p class="cap">' + esc(r.message || 'No caption') + '</p>' +
@@ -435,8 +437,8 @@ function columns(ms) {
 
 function cell(c, r) {
   var v = r[c.id];
-  if (c.id === 'image') return '<td class="l">' + (v ? '<img class="thumb" loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(v) + '" onerror="this.style.visibility=\'hidden\'">' : '') + '</td>';
-  if (c.link) return '<td>' + (v ? '<a href="' + esc(v) + '" title="Open post" aria-label="Open post">' + icon('link') + '</a>' : '') + '</td>';
+  if (c.id === 'image') return '<td class="l">' + (safeUrl(v) ? '<img class="thumb" loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(safeUrl(v)) + '" onerror="this.style.visibility=\'hidden\'">' : '') + '</td>';
+  if (c.link) return '<td>' + (safeUrl(v) ? '<a href="' + esc(safeUrl(v)) + '" title="Open post" aria-label="Open post">' + icon('link') + '</a>' : '') + '</td>';
   if (c.id === 'date') return '<td class="l num">' + dmy(v) + '</td>';
   if (c.id === 'post_time') return '<td class="l num">' + dmyhm(v) + '</td>';
   if (c.metric) return '<td class="num">' + fmt(c.id, v) + '</td>';

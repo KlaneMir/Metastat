@@ -90,3 +90,13 @@ Each source is a separate dataset. Combined reports with Google Ads or GA4 can b
 - **A shared report does not leak the token.** Error messages visible to report viewers contain no tokens, and technical details are disabled (`isAdminUser`).
 - **Narrow permissions.** The project requests only the `script.external_request` scope, and `urlFetchWhitelist` allows connections to `graph.facebook.com` only. The token is stored in user properties (`UserProperties`), and the panel runs with access set to "Only myself".
 - **CSV export from the panel** is protected against formula injection (`=`, `+`, `-`, `@` at the start of a cell).
+
+## Tests
+
+The connector and the panel are tested with Node's built-in test runner (Node 18+, no packages to install). The tests run `Code.gs` and the panel script from `Index.html` with small stand-ins for the Google services and the page:
+
+```bash
+node --test meta-connector/tests/connector.test.js
+```
+
+They check that the token never goes into a URL, that foreign `paging.next` links are refused, that error messages for report viewers contain no token, that post data from Meta cannot inject HTML or unsafe links into the panel, that the CSV export never starts a formula, and that the regular expressions stay fast on long input.
