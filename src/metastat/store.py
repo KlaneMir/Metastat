@@ -291,9 +291,14 @@ def clean_campaigns(items: list[dict]) -> list[dict]:
     return out
 
 
+# the same limits as maxlength in the forms; enforced here too, because a browser limit is not a control
+CAMPAIGN_NAME_MAX = 120
+CAMPAIGN_LABEL_MAX = 20
+
+
 def _clean_campaign(c: dict) -> dict:
     """A campaign from the config or a form: known fields only, ID as text, IG name without @."""
-    name = str(c.get("name") or "").strip()
+    name = str(c.get("name") or "").strip()[:CAMPAIGN_NAME_MAX].strip()
     if not name:
         raise StoreError("A campaign needs a name.")
     page = str(c.get("fb_page_id") or "").strip() or None
@@ -308,7 +313,7 @@ def _clean_campaign(c: dict) -> dict:
     return {
         "id": cid,
         "name": name,
-        "label": (str(c["label"]).strip() or None) if c.get("label") else None,
+        "label": (str(c["label"]).strip()[:CAMPAIGN_LABEL_MAX].strip() or None) if c.get("label") else None,
         "status": c.get("status") if c.get("status") in ("active", "ended") else "active",
         "fb_page_id": page,
         "ig_username": ig,

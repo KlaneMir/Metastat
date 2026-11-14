@@ -11,6 +11,9 @@ import sys
 
 PREFIX = "dpapi:"
 _ENTROPY = b"metastat-token-v1"  # extra DPAPI "salt", not a secret
+# one message for every damaged or foreign ciphertext, so the kind of damage cannot be told apart
+_UNREADABLE = ("The token cannot be decrypted: it was saved on another computer or another "
+               "Windows account. Paste the token again in Settings.")
 
 
 class SecureError(Exception):
@@ -50,8 +53,7 @@ if sys.platform == "win32":
         out = _Blob()
         if not _crypt32.CryptUnprotectData(ctypes.byref(src), None, ctypes.byref(ent),
                                            None, None, _UI_FORBIDDEN, ctypes.byref(out)):
-            raise SecureError("The token cannot be decrypted: it was saved on another computer or another "
-                              "Windows account. Paste the token again in Settings.")
+            raise SecureError(_UNREADABLE)
         try:
             return ctypes.string_at(out.pbData, out.cbData)
         finally:
@@ -73,7 +75,11 @@ def decrypt(value: str | None) -> str | None:
         return None
     if not value.startswith(PREFIX):
         raise SecureError("Unknown format of the saved token.")
-    return _unprotect(base64.b64decode(value[len(PREFIX):])).decode("utf-8")
+    try:
+        data = base64.b64decode(value[len(PREFIX):], validate=True)
+    except ValueError:  # binascii.Error: broken base64 gets the same error as any other damage
+        raise SecureError(_UNREADABLE) from None
+    return _unprotect(data).decode("utf-8")
 
 
 def mask(token: str | None) -> str:
