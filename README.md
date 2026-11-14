@@ -1,5 +1,10 @@
 # Metastat
 
+[![Tests](https://github.com/KlaneMir/Metastat/actions/workflows/tests.yml/badge.svg)](https://github.com/KlaneMir/Metastat/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
+![Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
+
 Metastat is a Windows program that collects statistics for Facebook pages and Instagram accounts from the Meta Graph API and keeps their history. It records the state of each profile day by day, reads fresh posts every hour, downloads post images right away, and builds monthly reports as XLSX, PDF and a ZIP of post cards. It looks like Meta Business Suite but shows what Business Suite does not: many campaigns at once, a comparison with the previous period, and the view curve of every post since publication.
 
 It was originally built for a Polish agency that runs a dozen or so campaigns at the same time, as an in-house replacement for paid data connectors. This public version is in English: the interface, the reports, the demo data and the installer. Dates and times are shown in Warsaw time.
